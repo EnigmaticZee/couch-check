@@ -24,7 +24,7 @@ Couch Check rates intimate content 0–10 per title. Done so far: the main-scree
 
 - Only intimate content is scored. Violence, profanity, drugs and frightening scenes are ignored.
 - No separate flag for assault scenes; they're scored on the 0–10 ladder like any other scene.
-- Edge cases are settled in the rubric (v5) in `pg/rubric.py`.
+- Edge cases are settled in the rubric (v5.1) in `pg/rubric.py`.
 - Live AI scores come from an OpenAI-compatible API (Groq's free tier). The key lives only in the server's environment. IMDb's text is never published, only fetched live per title.
 - Stream rows can't open in-app screens (Stremio ignores in-app links there), so the row opens the web page and the chip opens the in-app breakdown.
 - The rubric stays public; summaries describe content without judging who it's suitable for.

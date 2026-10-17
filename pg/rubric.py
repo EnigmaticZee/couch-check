@@ -5,18 +5,18 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 # Bump when the ladder's meaning changes, so AI-scored titles get re-scored.
-VERSION = 5
+VERSION = 5.1
 
 # (level, short name, what you'll see)
 LADDER = [
     (0, "None", "Nothing sexual or revealing."),
-    (1, "Affection", "Hugs, quick kisses, holding hands."),
+    (1, "Affection", "Hugs, quick kisses, holding hands, flirting and compliments like \"sexy\" or \"hot\"."),
     (2, "Romance", "Passionate or long kissing, making out fully clothed, couple lying in bed clothed."),
     (3, "Suggestive", "Sexual jokes and innuendo, sexual talk, revealing clothing (cleavage, lingerie, underwear including thongs, swimwear), camera lingering on bodies, nudity only in drawings or paintings."),
     (4, "Implied", "Undressing that cuts away, couple in bed under sheets afterwards, sounds from off-screen, nudity that is censored, blurred or strategically covered. Nothing actually visible."),
     (5, "Brief partial nudity", "Bare buttocks, bare back or side views actually visible, usually in a non-sexual setting."),
     (6, "Sex scene, covered", "Sex shown on screen with movement and sounds, but under sheets or clothed. No nudity."),
-    (7, "Topless", "Bare breasts visible, either outside a sex scene or briefly within one."),
+    (7, "Topless", "Bare female breasts visible, either outside a sex scene or briefly within one."),
     (8, "Sex scene with nudity", "Sex on screen with breasts or buttocks visible, not graphic."),
     (9, "Full frontal", "Genitals visible, male or female, in any setting."),
     (10, "Graphic", "Long or graphic sex, genitals in a sexual context, oral sex shown, near-pornographic."),
@@ -29,9 +29,10 @@ BETA_NOTICE = "Couch Check is in beta: the rubric is still being tuned, so a sco
 RULES = [
     "Score what is actually shown or heard on screen. Things said to be absent (\"no nudity is shown\", \"it cuts away before anything happens\") do not count.",
     "Revealing clothing (cleavage, lingerie, any underwear including boxers, briefs, bras and thongs, swimwear, towels) is level 3 however long it lasts; mark it prolonged when it is lengthy or throughout. Score higher only when bare buttocks, breasts or genitals are actually shown.",
+    "A bare chest on a man or boy (shirtless, bare-chested, topless men) is level 0 in a non-sexual setting such as sport, wrestling, swimming, work or getting dressed. Only when the scene is sexual is it scored on the ladder as usual. \"Shirtless\" and \"bare-chested\" mean a man unless the item says otherwise. Topless (level 7) is for bare female breasts; when an item doesn't make clear whether a topless person is a man or a woman, score it as a woman.",
     "Nudity that is censored, blurred, pixelated or covered (by objects, logos, sheets or camera angles) is level 4, even when the context makes clear the person is naked.",
     "Nudity seen only in artwork (drawings, sketches, paintings, sculptures, posters) is level 3, or 4 if the artwork is realistic and lingered on. Photos or video of real people count as real nudity.",
-    "Crude or non-sexual mentions of body parts (threats, insults, toilet or bodily humour) are level 0. Only sexual talk, jokes or innuendo are level 3.",
+    "Crude or non-sexual mentions of body parts (threats, insults, toilet or bodily humour) are level 0. Compliments and flirting (calling someone \"sexy\", \"hot\" or \"gorgeous\", flirty remarks) are level 1. Only sexual talk, jokes or innuendo about sex are level 3.",
     "If an item fits two levels, use the higher one. If it describes several scenes, use the most explicit one.",
     "Sexual assault scenes are scored by explicitness like any other scene.",
     "Violence, profanity, drugs and frightening content are irrelevant: score them 0 unless they include sexual content or nudity.",

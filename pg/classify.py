@@ -219,8 +219,10 @@ _KEYWORDS = [
     (4, r"implied sex|sex is implied|after sex|in bed together|undress|sex off[- ]?screen"),
     (3, r"innuendo|sexual (joke|reference|talk|comment|humou?r)|underwear|bikini|lingerie|cleavage|strip"),
     (2, r"make out|making out|makes out|passionate"),
-    (1, r"kiss|hug|flirt|romanc"),
+    (1, r"kiss|hug|flirt|romanc|sexy"),
 ]
+# Bare male chests are level 0 outside sexual scenes (rubric v5.1), so they're removed before matching.
+_MALE_CHEST = re.compile(r"\b(shirtless|bare[- ]chested|topless (men|man|guys?|boys?|males?)|(men|man|guys?|boys?|males?) (are |is )?topless)\b", re.I)
 # Items that say nothing is shown or it's only implied/censored cap at Implied, wherever that's said in the item.
 _NOT_SHOWN = re.compile(r"\b(implied|implies|nothing (is )?(ever )?(shown|seen|visible)|not (actually )?(shown|seen|visible)|censored|blurred|pixelated|covered)\b", re.I)
 _NEGATION = re.compile(r"\b(no|not|never|without|nothing|isn't|aren't|doesn't)\b", re.I)
@@ -252,6 +254,7 @@ def _with_keywords(text: str) -> dict:
     sentences = [s for s in re.split(r"(?<=[.!?])\s+", text) if not _NEGATION.search(s)]
     level = 0
     for s in sentences:
+        s = _MALE_CHEST.sub("", s)
         for lvl, pattern in _KEYWORDS:
             if re.search(pattern, s, re.I):
                 level = max(level, min(lvl, 3) if (_TALK.search(s) or _ARTWORK.search(s)) else lvl)

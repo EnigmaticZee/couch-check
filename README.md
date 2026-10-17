@@ -4,7 +4,7 @@
 
 <p align="center">
   <img alt="Stremio addon" src="https://img.shields.io/badge/Stremio-addon-7B5BF5">
-  <img alt="Rubric v5, beta" src="https://img.shields.io/badge/rubric-v5%20beta-F0BF7E">
+  <img alt="Rubric v5.1, beta" src="https://img.shields.io/badge/rubric-v5.1%20beta-F0BF7E">
   <img alt="Python 3.9+" src="https://img.shields.io/badge/python-3.9%2B-3776AB">
   <img alt="No dependencies" src="https://img.shields.io/badge/dependencies-none-2F9A5A">
   <img alt="MIT license" src="https://img.shields.io/badge/license-MIT-lightgrey">

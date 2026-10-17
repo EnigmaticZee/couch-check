@@ -47,7 +47,7 @@ class Store:
             "summary": row[4],
         }
 
-    def ai_scored(self, version: int) -> list:
+    def ai_scored(self, version: float) -> list:
         """Every cached title the AI scored under this rubric version, as entries with imdb_id."""
         with self._lock:
             rows = self._db.execute(
