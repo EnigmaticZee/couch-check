@@ -63,6 +63,7 @@ font-weight:600;border:0;font:inherit;font-weight:600;cursor:pointer}
 border-radius:12px;font-weight:600;background:transparent;font:inherit;font-weight:600;cursor:pointer}
 code{background:var(--accent-soft);padding:2px 6px;border-radius:6px;font-size:.88em;word-break:break-all}
 .foot{color:var(--muted);font-size:.82rem;text-align:center;margin-top:28px}
+.muted{color:var(--muted);font-size:.9rem}
 """
 
 
@@ -100,8 +101,12 @@ def _scale(level: Optional[int]) -> str:
     return f'<div class="scale">{cells}</div><div class="scale-labels"><span>0 · None</span><span>10 · Graphic</span></div>'
 
 
+def imdb_url(imdb_id: str) -> str:
+    return f"https://www.imdb.com/title/{imdb_id}/parentalguide/#nudity"
+
+
 def _imdb_link(imdb_id: str) -> str:
-    return f'<a href="https://www.imdb.com/title/{escape(imdb_id)}/parentalguide/#nudity">IMDb parents guide</a>'
+    return f'<a href="{escape(imdb_url(imdb_id))}">IMDb parents guide</a>'
 
 
 def pending(imdb_id: str) -> str:
@@ -144,7 +149,8 @@ font-size:2.2rem;font-weight:800;color:#fff}
 
 
 def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubric.ScoredItem], is_series: bool,
-              background: Optional[str] = None) -> str:
+              background: Optional[str] = None, show_text: bool = True) -> str:
+    """show_text=False lists scene counts per level and links to IMDb instead of showing its descriptions."""
     guide = entry["guide"]
     year = f" ({guide['year']})" if guide.get("year") else ""
     lvl = result.level
@@ -179,7 +185,20 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
         return (f'<li><span class="chip lv-{color(i.level)}" title="{escape(rubric.name(i.level))}">{i.level}</span>'
                 f"<div>{text}{tag_html}</div></li>")
 
-    if items:
+    if items and not show_text:
+        lines = []
+        for level in sorted({i.level for i in items}, reverse=True):
+            in_level = [i for i in items if i.level == level]
+            scenes = sum(1 for i in in_level if i.is_scene)
+            prolonged = sum(1 for i in in_level if i.prolonged)
+            count = f"{scenes} scene{'s' if scenes != 1 else ''}" if scenes else "general comments"
+            extra = f" · {prolonged} prolonged" if prolonged else ""
+            lines.append(f'<li><span class="chip lv-{color(level)}">{level}</span><div><b>{escape(rubric.name(level))}</b>'
+                         f'<br><span class="muted">{count}{extra}</span></div></li>')
+        items_html = (f'<div class="card"><h3>Flagged content · {len(items)}</h3><ul class="items">{"".join(lines)}</ul>'
+                      f'<p class="muted" style="margin:14px 0 0">The scene descriptions are written by IMDb\'s contributors. '
+                      f'<a href="{escape(imdb_url(imdb_id))}">Read them on IMDb ↗</a></p></div>')
+    elif items:
         groups = []
         for level in sorted({i.level for i in items}, reverse=True):
             in_level = sorted((i for i in items if i.level == level), key=lambda i: not i.is_scene)

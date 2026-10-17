@@ -5,9 +5,11 @@ import json
 import sqlite3
 import threading
 import time
+from datetime import date
 from typing import Optional
 
-REFRESH_AFTER = 21 * 24 * 3600  # re-fetch from IMDb after 3 weeks
+REFRESH_AFTER = 21 * 24 * 3600  # how often ongoing shows and recent movies are re-fetched from IMDb
+SERIES_TYPES = {"tvSeries", "tvMiniSeries"}
 
 
 class Store:
@@ -58,5 +60,18 @@ class Store:
             self._db.commit()
 
 
+def is_finished(guide: dict) -> bool:
+    """Shows that ended before this year and movies more than a year old: their guide rarely changes."""
+    this_year = date.today().year
+    if guide.get("type") in SERIES_TYPES:
+        return bool(guide.get("end_year")) and guide["end_year"] < this_year
+    return bool(guide.get("year")) and guide["year"] < this_year - 1
+
+
 def is_stale(entry: dict) -> bool:
+    """Finished titles are kept permanently; ongoing shows, recent movies and titles with no guide
+    entries yet are re-fetched every REFRESH_AFTER. tools/refresh.py forces a re-fetch."""
+    guide = entry["guide"]
+    if guide.get("items") and is_finished(guide):
+        return False
     return time.time() - entry["fetched_at"] > REFRESH_AFTER

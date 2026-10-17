@@ -14,7 +14,7 @@ QUERY = """
 query PG($id: ID!) {
   title(id: $id) {
     titleText { text }
-    releaseYear { year }
+    releaseYear { year endYear }
     titleType { id }
     parentsGuide {
       categories { category { id } totalSeverityVotes severityBreakdown { voteType votedFor } }
@@ -35,7 +35,7 @@ class NotFound(Exception):
 
 
 def fetch(imdb_id: str) -> dict:
-    """Returns {title, year, type, votes: {NONE, MILD, MODERATE, SEVERE}, items: [{id, text, is_spoiler}]}."""
+    """Returns {title, year, end_year, type, votes: {NONE, MILD, MODERATE, SEVERE}, items: [{id, text, is_spoiler}]}."""
     global _last_request
     body = json.dumps({"query": QUERY, "variables": {"id": imdb_id}}).encode()
     req = urllib.request.Request(
@@ -78,6 +78,7 @@ def fetch(imdb_id: str) -> dict:
     return {
         "title": title["titleText"]["text"],
         "year": (title.get("releaseYear") or {}).get("year"),
+        "end_year": (title.get("releaseYear") or {}).get("endYear"),  # set once a show has ended
         "type": (title.get("titleType") or {}).get("id"),
         "votes": votes,
         "items": items,

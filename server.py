@@ -32,6 +32,9 @@ from pg.store import Store
 
 PORT = int(os.environ.get("PORT", "7001"))
 PUBLIC_URL = os.environ.get("PG_PUBLIC_URL", "").rstrip("/")
+# "off" shows scene counts per level with a link to IMDb instead of IMDb's scene descriptions
+# (recommended for public instances; the descriptions are IMDb contributors' text).
+SCENE_TEXT = os.environ.get("PG_SCENE_TEXT", "on").lower() != "off"
 WAIT = float(os.environ.get("PG_WAIT", "8"))  # seconds a stream request waits for a first-time score
 DB_PATH = os.environ.get("PG_DB", str(Path(__file__).parent / "cache.sqlite3"))
 
@@ -215,8 +218,10 @@ def breakdown_meta(imdb_id: str, base: str) -> tuple:
         summary = entry.get("summary") if classify.is_ai(entry["classifier"]) else None
         meta["description"] = (
             f"{summary or rubric.auto_summary(result, items)} "
-            f"{(lambda t: t[:1].upper() + t[1:])(' · '.join(facts))}. Every flagged scene is listed on the right, most explicit first. "
-            f"{rubric.BETA_NOTICE}"
+            f"{(lambda t: t[:1].upper() + t[1:])(' · '.join(facts))}. "
+            + ("Every flagged scene is listed on the right, most explicit first. " if SCENE_TEXT
+               else "Scene counts by level are on the right; the scene descriptions are on IMDb. ")
+            + rubric.BETA_NOTICE
         )
     links.append({"name": f"Back to {title}", "category": CHIP_CATEGORY,
                   "url": f"stremio:///detail/{'series' if is_series else 'movie'}/{imdb_id}"})
@@ -237,6 +242,8 @@ def breakdown_rows(imdb_id: str, base: str) -> tuple:
     _, items = score(entry)
     if not items:
         return [{"name": "❔", "description": "No flagged scenes on IMDb.", "externalUrl": url}], 3600
+    if not SCENE_TEXT:
+        return level_rows(imdb_id, items), 3600
     rows = []
     for i in sorted(items, key=lambda i: (-i.level, not i.is_scene)):
         tags = [t for t, on in (("Prolonged", i.prolonged), ("Overview", not i.is_scene), ("Spoiler", i.is_spoiler)) if on]
@@ -247,6 +254,24 @@ def breakdown_rows(imdb_id: str, base: str) -> tuple:
             "externalUrl": url,
         })
     return rows, 3600
+
+
+def level_rows(imdb_id: str, items: list) -> list:
+    """One row per level with its scene count, linking to IMDb for the descriptions (PG_SCENE_TEXT=off)."""
+    rows = []
+    for level in sorted({i.level for i in items}, reverse=True):
+        in_level = [i for i in items if i.level == level]
+        scenes = sum(1 for i in in_level if i.is_scene)
+        prolonged = sum(1 for i in in_level if i.prolonged)
+        counts = f"{scenes} scene{'s' if scenes != 1 else ''}" if scenes else "General comments"
+        if prolonged:
+            counts += f" · {prolonged} prolonged"
+        rows.append({
+            "name": f"{rubric.emoji(level)} {level}\n{rubric.name(level)}",
+            "description": f"{counts}\nRead the scenes on IMDb ↗",
+            "externalUrl": pages.imdb_url(imdb_id),
+        })
+    return rows
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -341,7 +366,7 @@ class Handler(BaseHTTPRequestHandler):
         result, items = score(entry)
         is_series = is_series or entry["guide"].get("type") in SERIES_TYPES
         art = (cinemeta.meta("series" if is_series else "movie", imdb_id) or {}) if artwork else {}
-        self.send_html(pages.breakdown(imdb_id, entry, result, items, is_series, art.get("background")))
+        self.send_html(pages.breakdown(imdb_id, entry, result, items, is_series, art.get("background"), SCENE_TEXT))
 
     def log_message(self, fmt: str, *args) -> None:
         log.info("%s %s", fmt % args, self.headers.get("User-Agent", "")[:40] if self.headers else "")

@@ -98,6 +98,7 @@ Any host that runs Python or Docker and gives an HTTPS address works. A [`Docker
 | `PG_AI_DAILY_LIMIT` | `500` | Max AI calls per day; beyond that, new titles get estimates |
 | `PG_AI_REASONING_EFFORT` | `low` for gpt-oss | Reasoning effort for reasoning models |
 | `PG_CLASSIFIER` | — | `keywords` turns AI scoring off server-wide |
+| `PG_SCENE_TEXT` | `on` | `off` shows scene counts per level with a link to IMDb instead of IMDb's scene descriptions. Recommended for public instances |
 | `PORT` | `7001` | 7000 is taken by macOS AirPlay Receiver |
 | `PG_PUBLIC_URL` | from request | Public base URL behind a proxy or tunnel |
 | `PG_DB` | `./cache.sqlite3` | Cache location |
@@ -113,7 +114,9 @@ Any host that runs Python or Docker and gives an HTTPS address works. A [`Docker
 
 ## About the data
 
-IMDb has no public API for parents guides. Couch Check uses the same endpoint IMDb's website uses, fetches only titles someone opens, waits at least a second between requests, and caches results for three weeks. Scene descriptions shown in the breakdowns are written by IMDb's contributors; Couch Check only adds the levels and summaries. IMDb's terms allow only limited personal, non-commercial use of its data, so please run Couch Check with that in mind.
+IMDb has no public API for parents guides. Couch Check uses the same endpoint IMDb's website uses, fetches only titles someone opens, and waits at least a second between requests. Finished titles (shows that have ended, movies more than a year old) are cached permanently; ongoing shows and recent movies are refreshed every three weeks. To force a refresh, run `python3 tools/refresh.py <imdb ids…>` on the server.
+
+Scene descriptions shown in the breakdowns are written by IMDb's contributors; Couch Check only adds the levels and summaries. If you run a public instance, set `PG_SCENE_TEXT=off` so breakdowns link to IMDb for the descriptions instead of showing them. IMDb's terms allow only limited personal, non-commercial use of its data, so please run Couch Check with that in mind.
 
 ## Roadmap
 
