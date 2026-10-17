@@ -25,7 +25,7 @@ Couch Check reads each title's IMDb parents guide and turns its intimate-content
 
 ## Install
 
-A public instance is coming soon. Until then, [run your own](#run-your-own); it takes a couple of minutes.
+Open **[couch-check.onrender.com/configure](https://couch-check.onrender.com/configure)** and click **Install in Stremio**. Or [run your own](#run-your-own).
 
 To get the chip on the main screen, Couch Check has to sit **above Cinemeta** in your addon list. The Stremio app can't reorder addons, so use a community addon manager (search "Stremio Addon Manager"), drag Couch Check above Cinemeta, sync, and restart Stremio. The stream-list row works without this step.
 
