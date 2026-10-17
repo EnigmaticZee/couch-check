@@ -128,28 +128,18 @@ Scene descriptions shown in the breakdowns are written by IMDb's contributors; C
 
 **Shipped**
 
-- [x] One 0–10 score per title, on a fixed ladder
-- [x] Score chip on the title's main screen
-- [x] In-app breakdown with a short summary and every flagged scene
-- [x] Score row in every episode's and movie's stream list
-- [x] Web breakdown page
-- [x] Live AI scores, with a keyword estimate as the fallback
-- [x] Switch on the configure page to turn AI scores off
-- [x] Saved scores that survive redeploys (`data/scores.json`)
-- [x] Finished titles cached for good; ongoing shows refreshed every three weeks
-- [x] Option to link to IMDb instead of showing scene descriptions
+✅ Score chip on the title's main screen<br>
+✅ In-app breakdown with a short summary and every flagged scene<br>
+✅ Score row in every episode's and movie's stream list<br>
+✅ Live AI scores, with a keyword estimate as the fallback<br>
+✅ Saved scores that survive redeploys
 
 **Up next**
 
-- [ ] Public instance, so anyone can install it in one click
-- [ ] Pre-scored popular titles, so most say `AI` from day one
-- [ ] Episode-level scores for shows
-- [ ] Scene timing, so you can skip ahead
-- [ ] Personal cut-offs, e.g. "✅ Family · ✅ Us"
-- [ ] Family-friendly catalogs on the Stremio home screen
-- [ ] Your own override for a title after watching it
-
-The full backlog is in [BACKLOG.md](BACKLOG.md).
+⬜ Episode-level scores for shows<br>
+⬜ Scene timing, so you can skip ahead<br>
+⬜ Personal cut-offs, like one limit for family and another for just the two of you<br>
+⬜ Your own override for a title after watching it
 
 ## License
 
