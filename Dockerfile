@@ -16,5 +16,8 @@ RUN mkdir -p /data && chown nobody /data
 VOLUME /data
 EXPOSE 7001
 
+# BeamUp runs apps whose name lacks "docker" with Heroku's "/start web" command; this makes that work too.
+RUN printf '#!/bin/sh\nexec python /app/server.py\n' > /start && chmod +x /start
+
 USER nobody
 CMD ["python", "server.py"]
