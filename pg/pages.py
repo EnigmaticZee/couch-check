@@ -64,6 +64,8 @@ border-radius:12px;font-weight:600;background:transparent;font:inherit;font-weig
 code{background:var(--accent-soft);padding:2px 6px;border-radius:6px;font-size:.88em;word-break:break-all}
 .foot{color:var(--muted);font-size:.82rem;text-align:center;margin-top:28px}
 .muted{color:var(--muted);font-size:.9rem}
+.back{display:inline-block;margin:0 0 14px;padding:8px 14px;border-radius:10px;background:var(--accent-soft);
+color:var(--accent);font-weight:600;text-decoration:none;font-size:.92rem}
 """
 
 
@@ -225,7 +227,19 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
     source = "Summary by AI" if ai and entry.get("summary") else "Summary from the scores"
     summary_html = f"""<div class="card summary"><h3>In short</h3><p>{escape(summary)}</p>
 <p class="src">{source}</p></div>"""
-    body = f"""{hero}{summary_html}{items_html}{vote_html}<div class="card">{_ladder_table()}</div>
+    title_link = f"stremio:///detail/{'series' if is_series else 'movie'}/{imdb_id}"
+    back = f"""<a class="back" id="back" href="{escape(title_link)}">← Back to Stremio</a>
+<script>
+// Inside Stremio this page opens in the app's own window, which has no back button: go back the way we came
+// (skipping Stremio's "leaving the app" page), or open the title in Stremio when there's no history.
+document.getElementById("back").addEventListener("click", function (e) {{
+  if (history.length > 1) {{
+    e.preventDefault();
+    history.go(/stremio\.com\/warning/.test(document.referrer) ? -2 : -1);
+  }}
+}});
+</script>"""
+    body = f"""{back}{hero}{summary_html}{items_html}{vote_html}<div class="card">{_ladder_table()}</div>
 <p class="foot">{escape(rubric.BETA_NOTICE)}<br>Scene descriptions from IMDb's parents guide. Levels by Couch Check.</p>"""
     return _doc(f"{guide['title']} · Couch Check", body, extra_css=HERO_CSS)
 
@@ -288,7 +302,7 @@ Tap: full list in browser ↗</div></div><div class="cap">In every episode's and
 </div></div>
 <div class="card"><h3>Install</h3>
 <label class="toggle"><input type="checkbox" id="ai"{" checked" if ai_on else ""}><span class="switch"></span>
-<span><b>Use AI scores</b> (recommended)<br><small>An AI reads every scene description and places it on the scale.
+<span><b>Use AI scores</b><br><small>An AI reads every scene description and places it on the scale.
 Turn off to see only the quick keyword estimate.</small></span></label>
 <div class="actions">
 <a class="btn" id="install" href="{escape(stremio)}">Install in Stremio</a>

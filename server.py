@@ -243,12 +243,14 @@ def breakdown_rows(imdb_id: str, base: str) -> tuple:
     if guide.get("missing"):
         return [], 86400
     url = web_url(base, imdb_id, guide.get("type") in SERIES_TYPES)
-    _, items = score(entry)
+    result, items = score(entry)
     if not items:
         return [{"name": "❔", "description": "No flagged scenes on IMDb.", "externalUrl": url}], 3600
+    summary = (entry.get("summary") if classify.is_ai(entry["classifier"]) else None) or rubric.auto_summary(result, items)
+    # The summary first, so it's visible in the list without reading the left side.
+    rows = [{"name": "📝\nIn short", "description": "\n".join(textwrap.wrap(summary, ROW_WIDTH)), "externalUrl": url}]
     if not SCENE_TEXT:
-        return level_rows(imdb_id, items), 3600
-    rows = []
+        return rows + level_rows(imdb_id, items), 3600
     for i in sorted(items, key=lambda i: (-i.level, not i.is_scene)):
         tags = [t for t, on in (("Prolonged", i.prolonged), ("Overview", not i.is_scene), ("Spoiler", i.is_spoiler)) if on]
         rows.append({
