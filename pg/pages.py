@@ -248,12 +248,13 @@ It's part of the story but not shown, so it isn't scored. The items are listed f
     title_link = f"stremio:///detail/{'series' if is_series else 'movie'}/{imdb_id}"
     back = f"""<a class="back" id="back" href="{escape(title_link)}">← Back to Stremio</a>
 <script>
-// Inside Stremio this page opens in the app's own window, which has no back button: go back the way we came
-// (skipping Stremio's "leaving the app" page), or open the title in Stremio when there's no history.
+// Inside Stremio this page opens in the app's own window, which has no back button. Stremio shows its
+// "leaving Stremio" notice first and passes no referrer, so with no referrer go back two steps (past the notice).
 document.getElementById("back").addEventListener("click", function (e) {{
   if (history.length > 1) {{
     e.preventDefault();
-    history.go(/stremio\.com\/warning/.test(document.referrer) ? -2 : -1);
+    var viaNotice = !document.referrer || /stremio\.com/.test(document.referrer);
+    history.go(viaNotice && history.length > 2 ? -2 : -1);
   }}
 }});
 </script>"""
