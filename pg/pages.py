@@ -287,6 +287,7 @@ ol.steps{margin:0;padding-left:20px}ol.steps li{margin:6px 0}
 .levels{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
 .beta{font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;vertical-align:middle;
 background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:3px 9px;margin-left:6px}
+.beta.ver{text-transform:none;letter-spacing:.02em;margin-left:4px}
 .notice{border-color:var(--accent);background:var(--accent-soft);font-size:.92rem}
 .toggle{display:flex;gap:12px;align-items:flex-start;margin:0 0 16px;cursor:pointer}
 .toggle input{position:absolute;opacity:0;pointer-events:none}
@@ -311,7 +312,7 @@ def configure(base_url: str, version: str, ai_on: bool = True) -> str:
 <code>./start.sh</code> instead and open the configure page at the https address it prints.</p></div>"""
     levels = "".join(f'<span class="chip lv-{color(l)}" title="{escape(n)}">{l}</span>' for l, n, _ in rubric.LADDER)
     body = f"""<div class="intro"><img src="/static/logo.png" alt="Couch Check logo"><div>
-<h1>Couch Check <span class="beta">Beta</span></h1><p>Know what to expect before you press play with family. Every movie and show rated 0–10 for
+<h1>Couch Check <span class="beta">Beta</span><span class="beta ver">Rubric v{rubric.VERSION}</span></h1><p>Know what to expect before you press play with family. Every movie and show rated 0–10 for
 sex and nudity, with every flagged scene listed.</p></div></div>
 {warn}
 <div class="card notice"><b>Beta.</b> The scoring rubric is still being tuned, so a score can occasionally be off.
