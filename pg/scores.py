@@ -1,4 +1,4 @@
-"""AI scores made offline (see tools/), published in data/scores.json.
+"""Saved AI scores in data/scores.json (written by tools/save_scores.py).
 
 The file holds only our own derived data: for each title, IMDb's item IDs mapped to
 [level, is_scene, prolonged] plus, for warning items, the warning key as a fourth value. IMDb's text is never stored in it; the server fetches

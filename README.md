@@ -21,15 +21,7 @@ Couch Check reads each title's IMDb parents guide and turns its intimate-content
 - **On the title's main screen.** A *Couch Check* chip sits right under the rating, before you even pick an episode.
 - **A breakdown inside Stremio.** Tap the chip for a short summary and every flagged scene, grouped by level, with spoilers hidden.
 - **In every stream list.** A row at the top of each episode's and movie's sources.
-- **AI score or quick estimate.** An AI reads every scene description. Until it has, a keyword estimate fills in, clearly labelled.
-
-## Install
-
-Open **[couch-check.onrender.com/configure](https://couch-check.onrender.com/configure)** and click **Install in Stremio**. Or [run your own](#run-your-own).
-
-To get the chip on the main screen, Couch Check has to sit **above Cinemeta** in your addon list. The Stremio app can't reorder addons, so use a community addon manager (search "Stremio Addon Manager"), drag Couch Check above Cinemeta, sync, and restart Stremio. The stream-list row works without this step.
-
-Prefer no AI? The configure page has a **Use AI scores** switch. With it off, you only see keyword estimates.
+- **AI score or quick estimate.** Every score is labelled. `AI` means an AI model read each scene description and understood its context (a joke about something isn't the same as seeing it). `Est.` is a rougher keyword estimate, shown until the AI has scored a title, or always if you turn AI off.
 
 ## The scale
 
@@ -49,47 +41,55 @@ Prefer no AI? The configure page has a **Use AI scores** switch. With it off, yo
 
 Next to the score you'll also see how many **scenes** are at level 4 or above, how many are **prolonged**, whether a show's score is **show-wide**, and **low confidence** when IMDb has very little to go on.
 
+## Set up your own
 
-## AI score vs estimate
+> [!NOTE]
+> **There's no public instance yet.** Stremio's free community hosting (BeamUp) isn't starting new addons at the moment, so for now everyone runs their own copy. It takes about ten minutes, and a free hosted version for everyone may come later.
 
-Every score is labelled with where it came from:
+Couch Check needs only Python 3.9+, with no packages to install. Stremio only installs addons over **HTTPS**, so you either run it on your computer through a free tunnel (step 2a) or host it for free (step 2b).
 
-- **`AI`:** an AI model read each scene description and placed it on the scale. It understands context: a *joke* about something isn't the same as seeing it, and something *implied* isn't the same as something shown.
-- **`Est.`:** a quick keyword estimate, shown until a title has been AI-scored (or always, if you turn AI off). It's rougher and can be fooled by wording.
+### 1. Get an AI key (optional, free)
 
-The first time anyone opens a title, the server saves the estimate immediately and asks the AI, waiting up to 5 seconds. Normally the AI answers in time, so the first view already says `AI`. Either way, the result is cached and every later view is instant.
+Without a key everything works, with keyword estimates instead of AI scores.
 
-## Run your own
+1. Create an account at [console.groq.com](https://console.groq.com) (no payment method needed) and create an API key.
+2. Copy `.env.example` to `.env` and paste the key after `PG_AI_API_KEY=`. Any OpenAI-compatible API works; the template is set up for Groq's free tier.
 
-Couch Check needs only Python 3.9+, with no packages to install.
+> [!IMPORTANT]
+> Treat the key like a password. `.env` is git-ignored, so never force-add it, and never paste the key into issues, chats or screenshots. If it leaks, revoke it in Groq's console and create a new one.
+
+### 2a. Run it on your computer
 
 ```bash
 git clone https://github.com/EnigmaticZee/couch-check.git
 cd couch-check
-python3 server.py
-```
-
-That serves `http://localhost:7001`, which is handy for the breakdown pages in a browser. **Stremio only installs addons over HTTPS**, so for Stremio either host it (see below) or use the included Cloudflare quick tunnel:
-
-```bash
-mkdir -p bin && curl -sL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-arm64.tgz | tar -xz -C bin
+brew install cloudflared   # or download it from Cloudflare's cloudflared releases page
 ./start.sh
 ```
 
-`start.sh` prints a `https://….trycloudflare.com/configure` address. Open it and click **Install in Stremio**. The address changes each time you start it.
+`start.sh` starts the addon and a Cloudflare quick tunnel, then prints a `https://….trycloudflare.com/configure` address. The address changes every time you start it, and the addon only works while your computer is on, so this suits trying it out. For the breakdown pages in a browser only, `python3 server.py` serves `http://localhost:7001`.
 
-### AI scores
+### 2b. Host it for free on Render
 
-Copy `.env.example` to `.env` and add a key for any OpenAI-compatible API. The template is set up for [Groq's](https://console.groq.com) free tier. Without a key, everything works with estimates.
+1. [Fork this repo](https://github.com/EnigmaticZee/couch-check/fork) to your GitHub account.
+2. On [render.com](https://render.com), choose **New → Web Service** and connect your fork.
+3. Pick **Docker** as the language and the **Free** instance type.
+4. Under environment variables, add `PG_AI_BASE_URL`, `PG_AI_API_KEY` and `PG_AI_MODEL` with the values from `.env.example` and your key (skip this for estimates only).
+5. Under advanced settings, set the health check path to `/manifest.json`, then deploy. Your address looks like `https://your-app.onrender.com`.
+6. Free Render services sleep after 15 minutes without visits, and Stremio gives up before one wakes. Create a free [UptimeRobot](https://uptimerobot.com) HTTP monitor for `https://your-app.onrender.com/manifest.json` every 5 minutes to keep it awake.
 
-> [!IMPORTANT]
-> Never commit `.env` or paste the key anywhere public. It's git-ignored, and the key is only read from the environment: it never appears in the code, the repo or any response. Use a dedicated account with no payment method, and revoke the key in your provider's console if it ever leaks.
+Render's free disk is wiped on each deploy or restart, so titles are re-fetched and re-scored as they're opened; [saved scores](#saved-scores) keep the AI scores you care about. Any other host that runs Docker or Python with an HTTPS address works too: the [`Dockerfile`](Dockerfile) keeps the cache on a `/data` volume.
 
-### Hosting
+### 3. Install in Stremio
 
-Any host that runs Python or Docker and gives an HTTPS address works. A [`Dockerfile`](Dockerfile) is included, and it keeps the cache on a `/data` volume. Set your AI key as a secret environment variable on the host, and set `PG_PUBLIC_URL` if the host's address isn't detected automatically.
+1. Open your address's `/configure` page and click **Install in Stremio**. Turn off **Use AI scores** there first if you only want estimates.
+2. For the chip on the main screen, Couch Check has to sit **above Cinemeta** in your addon list. The Stremio app can't reorder addons, so use a community addon manager (search "Stremio Addon Manager"), drag Couch Check above Cinemeta, sync, and restart Stremio. The stream-list row works without this step.
 
-### Settings
+If you share your copy with other people, set `PG_SCENE_TEXT=off` (see [About the data](#about-the-data)).
+
+## Settings
+
+Set these in `.env` locally, or as environment variables on your host.
 
 | Variable | Default | |
 |---|---|---|
@@ -97,32 +97,30 @@ Any host that runs Python or Docker and gives an HTTPS address works. A [`Docker
 | `PG_AI_MIN_INTERVAL` | `1.5` | Seconds between AI calls |
 | `PG_AI_DAILY_LIMIT` | `500` | Max AI calls per day; beyond that, new titles get estimates |
 | `PG_AI_REASONING_EFFORT` | `low` for gpt-oss | Reasoning effort for reasoning models |
-| `PG_CLASSIFIER` | — | `keywords` turns AI scoring off server-wide |
-| `PG_SCENE_TEXT` | `on` | `off` shows scene counts per level with a link to IMDb instead of IMDb's scene descriptions. Recommended for public instances |
+| `PG_CLASSIFIER` | — | `keywords` turns AI scoring off for everyone |
+| `PG_SCENE_TEXT` | `on` | `off` shows scene counts per level with a link to IMDb instead of IMDb's scene descriptions |
 | `PORT` | `7001` | 7000 is taken by macOS AirPlay Receiver |
-| `PG_PUBLIC_URL` | from request | Public base URL behind a proxy or tunnel |
+| `PG_PUBLIC_URL` | from request | Public base URL, if your host's address isn't detected automatically |
 | `PG_DB` | `./cache.sqlite3` | Cache location |
 | `PG_SCORES` | `./data/scores.json` | Saved scores file |
 | `PG_EXPORT_TOKEN` | — | Lets `tools/save_scores.py` download a hosted server's AI scores. Off while unset |
 
-### Saved scores
+## Saved scores
 
-[`data/scores.json`](data/scores.json) keeps AI scores in the repo, so they survive redeploys and cache resets: titles in it show their AI score straight away, without asking the AI again. It holds only IMDb item IDs, our levels and short summaries, never IMDb's text.
+[`data/scores.json`](data/scores.json) keeps AI scores in the repo, so they survive redeploys and cache resets: titles in it show their AI score straight away, without asking the AI again. It holds only IMDb item IDs, levels and short summaries, never IMDb's text.
 
 ```bash
 python3 tools/save_scores.py                    # from your local cache
 python3 tools/save_scores.py https://your-host  # from a hosted server
 ```
 
-For a hosted server, set the same `PG_EXPORT_TOKEN` secret on the server and in your local `.env`. Then commit `data/scores.json` and redeploy. If the rubric version changes, the file starts fresh and titles are re-scored as they're opened.
-
-Scores can also be made offline: `python3 tools/export_pending.py [imdb ids…]` writes titles to score (with their IMDb text) to `work/` (git-ignored), and `python3 tools/import_scores.py` validates `work/scored.json` and merges it in.
+For a hosted server, set the same long random `PG_EXPORT_TOKEN` on the server and in your local `.env`. Then commit `data/scores.json` and redeploy. If the rubric version changes, the file starts fresh and titles are re-scored as they're opened.
 
 ## About the data
 
-IMDb has no public API for parents guides. Couch Check uses the same endpoint IMDb's website uses, fetches only titles someone opens, and waits at least a second between requests. Finished titles (shows that have ended, movies more than a year old) are cached permanently; ongoing shows and recent movies are refreshed every three weeks. To force a refresh, run `python3 tools/refresh.py <imdb ids…>` on the server.
+IMDb has no public API for parents guides. Couch Check uses the same endpoint IMDb's website uses, fetches only titles someone opens, and waits at least a second between requests. Finished titles (shows that have ended, movies more than a year old) are cached permanently; ongoing shows and recent movies are refreshed every three weeks. To force a refresh, run `python3 tools/refresh.py <imdb ids…>` where the server runs.
 
-Scene descriptions shown in the breakdowns are written by IMDb's contributors; Couch Check only adds the levels and summaries. If you run a public instance, set `PG_SCENE_TEXT=off` so breakdowns link to IMDb for the descriptions instead of showing them. IMDb's terms allow only limited personal, non-commercial use of its data, so please run Couch Check with that in mind.
+Scene descriptions in the breakdowns are written by IMDb's contributors; Couch Check only adds the levels and summaries. IMDb's terms allow only limited personal, non-commercial use of its data, so keep your copy personal, or set `PG_SCENE_TEXT=off` so breakdowns link to IMDb for the descriptions instead of showing them.
 
 ## 🗺️ Roadmap
 

@@ -1,10 +1,11 @@
 # Backlog
 
-Couch Check rates intimate content 0–10 per title. Live at https://couch-check.onrender.com (Render free plan, kept awake by an UptimeRobot check every 5 minutes, auto-deploys from `main`). Done so far: the main-screen chip, the in-app breakdown with summary, the stream-list row, the web breakdown page, live AI scores with keyword estimates as a fallback, an AI on/off setting, and saved scores in `data/scores.json` that survive redeploys.
+Couch Check rates intimate content 0–10 per title. Done so far: the main-screen chip, the in-app breakdown with summary, the stream-list row, the web breakdown page, live AI scores with keyword estimates as a fallback, an AI on/off setting, and saved scores in `data/scores.json` that survive redeploys.
 
 ## Now
 
-1. **Pre-score popular titles:** score a list of popular movies and shows, so most titles say `AI` from day one and the free AI quota goes further.
+1. **Public instance.** Host one copy for everyone once BeamUp (or another free host) can run it, with `PG_SCENE_TEXT=off`.
+2. **Pre-score popular titles:** score a list of popular movies and shows, so most titles say `AI` from day one and the free AI quota goes further.
 
 ## Next
 
@@ -23,7 +24,7 @@ Couch Check rates intimate content 0–10 per title. Live at https://couch-check
 
 - Only intimate content is scored. Violence, profanity, drugs and frightening scenes are ignored.
 - No separate flag for assault scenes; they're scored on the 0–10 ladder like any other scene.
-- Edge cases are settled in the rubric (v4) in `pg/rubric.py`.
+- Edge cases are settled in the rubric (v5) in `pg/rubric.py`.
 - Live AI scores come from an OpenAI-compatible API (Groq's free tier). The key lives only in the server's environment. IMDb's text is never published, only fetched live per title.
 - Stream rows can't open in-app screens (Stremio ignores in-app links there), so the row opens the web page and the chip opens the in-app breakdown.
 - The rubric stays public; summaries describe content without judging who it's suitable for.

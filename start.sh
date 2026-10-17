@@ -10,11 +10,12 @@ if [ -f .env ]; then set -a; . ./.env; set +a; fi
 PORT="${PORT:-7001}"
 # No third-party packages are needed; use the project's .venv if there is one, else python3.
 PYTHON="${PYTHON:-$( [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3 )}"
-CLOUDFLARED="bin/cloudflared"
+# cloudflared from PATH (e.g. brew install cloudflared), else a copy in bin/.
+CLOUDFLARED="${CLOUDFLARED:-$(command -v cloudflared || echo bin/cloudflared)}"
 LOG="$(mktemp -t pg-tunnel)"
 
 if [ ! -x "$CLOUDFLARED" ]; then
-  echo "Missing $CLOUDFLARED — see README (Using it in Stremio)." >&2
+  echo "cloudflared not found. Install it (see README, Run it on your computer) or put it in bin/." >&2
   exit 1
 fi
 

@@ -251,7 +251,7 @@ It's part of the story but not shown, so it isn't scored. The items are listed f
 // Inside Stremio this page opens in the app's own window, which has no back button. Stremio shows its
 // "leaving Stremio" notice first, which reports itself only as https://www.stremio.com/ (or nothing) as the referrer.
 document.getElementById("back").addEventListener("click", function (e) {{
-  var viaNotice = !document.referrer || /stremio\.com/.test(document.referrer);
+  var viaNotice = !document.referrer || /stremio\\.com/.test(document.referrer);
   if (viaNotice) {{
     // History is [Stremio screen, notice, this page]: go back past the notice. With only [notice, this page],
     // the link itself opens the title in Stremio.

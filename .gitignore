@@ -5,4 +5,3 @@ bin/
 .env
 work/
 .DS_Store
-beamup.json

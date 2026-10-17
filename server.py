@@ -74,7 +74,6 @@ STATIC_FILES = {
     "/favicon.ico": (STATIC_DIR / "logo.png", "image/png"),
 }
 EST_SEGMENT = "/est"  # install-link setting: AI scores off, keyword estimates only
-VERSION_PREFIX = re.compile(r"^/v\d+(?=/)")
 HTTP_CACHE_MAX = 300  # Stremio's webview keeps responses on disk; cap how long it may reuse one
 
 log = logging.getLogger("pg")
@@ -333,10 +332,6 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         raw_path, _, query = self.path.partition("?")
         path = unquote(raw_path)  # Stremio sends episode IDs as tt123%3A1%3A2
-        # Optional /vN prefix: installing from a new prefix sidesteps a manifest Stremio has cached.
-        prefix_match = VERSION_PREFIX.match(path)
-        prefix = prefix_match.group(0) if prefix_match else ""
-        path = path[len(prefix):]
         REQUEST.use_ai = not (path.startswith(EST_SEGMENT + "/") or "est=1" in query)
         if path.startswith(EST_SEGMENT + "/"):
             path = path[len(EST_SEGMENT):]
@@ -348,7 +343,7 @@ class Handler(BaseHTTPRequestHandler):
             file, content_type = STATIC_FILES[path]
             return self.send(200, file.read_bytes(), content_type, cache=86400)
         if path in ("/", "/configure"):
-            return self.send_html(pages.configure(self.base_url() + prefix, MANIFEST["version"], ai_wanted()))
+            return self.send_html(pages.configure(self.base_url(), MANIFEST["version"], ai_wanted()))
 
         m = BREAKDOWN_META_PATH.match(path)
         if m:
@@ -382,7 +377,7 @@ class Handler(BaseHTTPRequestHandler):
 
         m = GUIDE_PATH.match(path)
         if m:
-            return self.guide_page(m.group(1), is_series="series=1" in query, artwork="art=0" not in query)
+            return self.guide_page(m.group(1), is_series="series=1" in query)
 
         self.send(404, "Not found", "text/plain")
 
@@ -394,7 +389,7 @@ class Handler(BaseHTTPRequestHandler):
         titles = scores.from_cache(service.store.ai_scored(rubric.VERSION))
         self.send_json({"rubric_version": rubric.VERSION, "titles": titles})
 
-    def guide_page(self, imdb_id: str, is_series: bool, artwork: bool = True) -> None:
+    def guide_page(self, imdb_id: str, is_series: bool) -> None:
         entry = lookup(imdb_id, wait=0)
         if entry is None:
             if imdb_id in service.errors and not service.is_working(imdb_id):
@@ -404,7 +399,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_html(pages.missing(imdb_id), 404)
         result, items = score(entry)
         is_series = is_series or entry["guide"].get("type") in SERIES_TYPES
-        art = (cinemeta.meta("series" if is_series else "movie", imdb_id) or {}) if artwork else {}
+        art = cinemeta.meta("series" if is_series else "movie", imdb_id) or {}
         self.send_html(pages.breakdown(imdb_id, entry, result, items, is_series, art.get("background"), SCENE_TEXT))
 
     def log_message(self, fmt: str, *args) -> None:

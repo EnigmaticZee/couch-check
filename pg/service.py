@@ -33,10 +33,10 @@ class Service:
                 if not classify.is_ai(entry["classifier"]):
                     done.wait(wait)  # an estimate may become an AI score within this view
                     entry = self.store.get(imdb_id) or entry
-            return with_offline_scores(imdb_id, entry)
+            return with_saved_scores(imdb_id, entry)
         self._start(imdb_id).wait(wait)
         entry = self.store.get(imdb_id)
-        return with_offline_scores(imdb_id, entry) if entry else None
+        return with_saved_scores(imdb_id, entry) if entry else None
 
     def lookup_estimate(self, imdb_id: str, wait: float) -> Optional[dict]:
         """The keyword estimate only, for viewers who turned AI scores off. Never waits for the AI."""
@@ -63,7 +63,7 @@ class Service:
         if not entry["guide"].get("items"):
             return False
         if imdb_id in scores.titles():
-            return False  # scored offline; nothing for the server's AI to do
+            return False  # has a saved score; nothing for the server's AI to do
         if entry["classifier"] == "keywords":
             return classify.ai_enabled()
         return not (entry["classifier"] or "").endswith(f"@{rubric.VERSION}")
@@ -112,14 +112,14 @@ class Service:
             done.set()
 
 
-def with_offline_scores(imdb_id: str, entry: dict) -> dict:
+def with_saved_scores(imdb_id: str, entry: dict) -> dict:
     """If data/scores.json has AI scores for this title, use them in place of the cached classification."""
     items = entry["guide"].get("items") or []
-    offline = scores.lookup(imdb_id, items, classify.keywords_one)
-    if offline is None:
+    saved = scores.lookup(imdb_id, items, classify.keywords_one)
+    if saved is None:
         return entry
     summary = scores.titles().get(imdb_id, {}).get("summary")
-    return {**entry, "classified": offline, "classifier": f"ai:offline@{rubric.VERSION}", "summary": summary}
+    return {**entry, "classified": saved, "classifier": f"ai:saved@{rubric.VERSION}", "summary": summary}
 
 
 def score(entry: dict) -> Tuple[rubric.Result, list]:
