@@ -1,0 +1,7 @@
+.venv/
+cache.sqlite3
+__pycache__/
+bin/
+.env
+work/
+.DS_Store

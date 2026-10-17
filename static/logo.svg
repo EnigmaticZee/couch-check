@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4A2F8F"/>
+      <stop offset="1" stop-color="#22184A"/>
+    </linearGradient>
+    <linearGradient id="cushion" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFE9C9"/>
+      <stop offset="1" stop-color="#F6CF98"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#bg)"/>
+  <!-- couch -->
+  <rect x="140" y="182" width="232" height="124" rx="38" fill="url(#cushion)"/>
+  <rect x="164" y="282" width="184" height="70" rx="22" fill="#F0BF7E"/>
+  <rect x="92" y="244" width="78" height="128" rx="32" fill="url(#cushion)"/>
+  <rect x="342" y="244" width="78" height="128" rx="32" fill="url(#cushion)"/>
+  <rect x="118" y="364" width="26" height="38" rx="9" fill="#F0BF7E"/>
+  <rect x="368" y="364" width="26" height="38" rx="9" fill="#F0BF7E"/>
+  <!-- check badge -->
+  <circle cx="378" cy="160" r="74" fill="#2FB866" stroke="#2A1D57" stroke-width="16"/>
+  <path d="M342 162 L368 188 L414 138" fill="none" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
