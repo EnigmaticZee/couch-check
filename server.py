@@ -314,13 +314,18 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Headers", "*")
         self.send_header("Cache-Control", f"max-age={min(cache, HTTP_CACHE_MAX)}" if cache else "no-cache")
         self.end_headers()
-        self.wfile.write(data)
+        if self.command != "HEAD":  # HEAD gets the same status and headers, without the body
+            self.wfile.write(data)
 
     def send_json(self, obj: dict, cache: int = 0) -> None:
         self.send(200, json.dumps(obj, ensure_ascii=False), "application/json; charset=utf-8", cache)
 
     def send_html(self, html: str, status: int = 200) -> None:
         self.send(status, html, "text/html; charset=utf-8")
+
+    def do_HEAD(self) -> None:
+        """Uptime monitors often check with HEAD; answer it like GET."""
+        self.do_GET()
 
     def do_OPTIONS(self) -> None:
         self.send(204, "", "text/plain")
