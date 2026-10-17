@@ -1,6 +1,6 @@
 """Merges work/scored.json into data/scores.json after checking it against work/pending.json.
 
-    .venv/bin/python tools/import_scores.py
+    python3 tools/import_scores.py
 
 data/scores.json is safe to publish: it holds only IMDb item IDs and our levels, no IMDb text.
 A running server picks up the change automatically.
@@ -18,23 +18,12 @@ sys.path.insert(0, str(ROOT))
 from pg import rubric, scores  # noqa: E402
 
 
-def dump(data: dict) -> str:
-    """One line per item, so a score update reads as a clear diff."""
-    titles = []
-    for imdb_id, t in data["titles"].items():
-        items = ",\n".join(f'   "{k}": {json.dumps(v)}' for k, v in t["items"].items())
-        summary = f'"summary": {json.dumps(t["summary"], ensure_ascii=False)}, ' if t.get("summary") else ""
-        titles.append(f'  "{imdb_id}": {{"title": {json.dumps(t["title"], ensure_ascii=False)}, '
-                      f'"scored": "{t["scored"]}", {summary}"items": {{\n{items}\n  }}}}')
-    return f'{{\n "rubric_version": {data["rubric_version"]},\n "titles": {{\n' + ",\n".join(titles) + "\n }\n}\n"
-
-
 def main() -> None:
     pending = {p["imdb_id"]: p for p in json.loads((ROOT / "work" / "pending.json").read_text())}
     scored = json.loads((ROOT / "work" / "scored.json").read_text())
 
     path = scores.PATH
-    data = json.loads(path.read_text()) if path.exists() else {"rubric_version": rubric.VERSION, "titles": {}}
+    data = scores.load_file()
     if data.get("rubric_version") != rubric.VERSION:
         sys.exit(f"{path.name} is rubric v{data.get('rubric_version')}, code is v{rubric.VERSION}; re-score everything first")
 
@@ -64,9 +53,7 @@ def main() -> None:
 
     if problems:
         print("Not imported:\n  " + "\n  ".join(problems))
-    path.parent.mkdir(exist_ok=True)
-    data["titles"] = dict(sorted(data["titles"].items()))
-    path.write_text(dump(data))
+    scores.save_file(data)
     print(f"Imported {merged} titles; {path.name} now has {len(data['titles'])}")
 
 

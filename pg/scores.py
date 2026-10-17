@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import threading
+from datetime import date
 from pathlib import Path
 from typing import List, Optional
 
@@ -69,3 +70,44 @@ def lookup(imdb_id: str, items: List[dict], fallback) -> Optional[List[dict]]:
 
 def titles() -> dict:
     return _current().get("titles", {})
+
+
+def load_file() -> dict:
+    """data/scores.json as a dict, or a fresh one for the current rubric version."""
+    if PATH.exists():
+        return json.loads(PATH.read_text())
+    return {"rubric_version": rubric.VERSION, "titles": {}}
+
+
+def save_file(data: dict) -> None:
+    """Writes data/scores.json with one line per item, so an update reads as a clear diff."""
+    titles = []
+    for imdb_id, t in sorted(data["titles"].items()):
+        items = ",\n".join(f'   "{k}": {json.dumps(v)}' for k, v in t["items"].items())
+        summary = f'"summary": {json.dumps(t["summary"], ensure_ascii=False)}, ' if t.get("summary") else ""
+        titles.append(f'  "{imdb_id}": {{"title": {json.dumps(t["title"], ensure_ascii=False)}, '
+                      f'"scored": "{t["scored"]}", {summary}"items": {{\n{items}\n  }}}}')
+    PATH.parent.mkdir(exist_ok=True)
+    PATH.write_text(f'{{\n "rubric_version": {data["rubric_version"]},\n "titles": {{\n'
+                    + ",\n".join(titles) + "\n }\n}\n")
+
+
+def from_cache(rows) -> dict:
+    """Builds scores-file titles from cached AI scores: {imdb_id: {title, scored, summary, items}}.
+
+    `rows` are store entries (with imdb_id) scored by the AI under the current rubric version.
+    """
+    out = {}
+    for e in rows:
+        guide = e["guide"]
+        items = guide.get("items") or []
+        if not items or not e["classified"] or len(e["classified"]) != len(items):
+            continue
+        out[e["imdb_id"]] = {
+            "title": guide.get("title") or e["imdb_id"],
+            "scored": date.fromtimestamp(e["fetched_at"]).isoformat(),
+            "summary": e.get("summary"),
+            "items": {i["id"]: [c["level"], int(bool(c["is_scene"])), int(bool(c["prolonged"]))]
+                      for i, c in zip(items, e["classified"])},
+        }
+    return out

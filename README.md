@@ -102,15 +102,21 @@ Any host that runs Python or Docker and gives an HTTPS address works. A [`Docker
 | `PORT` | `7001` | 7000 is taken by macOS AirPlay Receiver |
 | `PG_PUBLIC_URL` | from request | Public base URL behind a proxy or tunnel |
 | `PG_DB` | `./cache.sqlite3` | Cache location |
-| `PG_SCORES` | `./data/scores.json` | Offline scores file |
+| `PG_SCORES` | `./data/scores.json` | Saved scores file |
+| `PG_EXPORT_TOKEN` | — | Lets `tools/save_scores.py` download a hosted server's AI scores. Off while unset |
 
-### Offline scores
+### Saved scores
 
-[`data/scores.json`](data/scores.json) can hold AI scores made offline. They always take precedence over live ones. The file contains only IMDb item IDs and our levels, never IMDb's text.
+[`data/scores.json`](data/scores.json) keeps AI scores in the repo, so they survive redeploys and cache resets: titles in it show their AI score straight away, without asking the AI again. It holds only IMDb item IDs, our levels and short summaries, never IMDb's text.
 
-1. `python3 tools/export_pending.py [imdb ids…]` writes the titles to score, with their IMDb text, to `work/` (git-ignored).
-2. Score them following `work/rubric.txt`, and save the result as `work/scored.json`.
-3. `python3 tools/import_scores.py` validates the result and merges it into `data/scores.json`.
+```bash
+python3 tools/save_scores.py                    # from your local cache
+python3 tools/save_scores.py https://your-host  # from a hosted server
+```
+
+For a hosted server, set the same `PG_EXPORT_TOKEN` secret on the server and in your local `.env`. Then commit `data/scores.json` and redeploy. If the rubric version changes, the file starts fresh and titles are re-scored as they're opened.
+
+Scores can also be made offline: `python3 tools/export_pending.py [imdb ids…]` writes titles to score (with their IMDb text) to `work/` (git-ignored), and `python3 tools/import_scores.py` validates `work/scored.json` and merges it in.
 
 ## About the data
 
@@ -118,9 +124,32 @@ IMDb has no public API for parents guides. Couch Check uses the same endpoint IM
 
 Scene descriptions shown in the breakdowns are written by IMDb's contributors; Couch Check only adds the levels and summaries. If you run a public instance, set `PG_SCENE_TEXT=off` so breakdowns link to IMDb for the descriptions instead of showing them. IMDb's terms allow only limited personal, non-commercial use of its data, so please run Couch Check with that in mind.
 
-## Roadmap
+## 🗺️ Roadmap
 
-Episode-level scores, scene timing and personal cut-offs ("✅ Family · ✅ Us") are next. See [BACKLOG.md](BACKLOG.md).
+**Shipped**
+
+- [x] One 0–10 score per title, on a fixed ladder
+- [x] Score chip on the title's main screen
+- [x] In-app breakdown with a short summary and every flagged scene
+- [x] Score row in every episode's and movie's stream list
+- [x] Web breakdown page
+- [x] Live AI scores, with a keyword estimate as the fallback
+- [x] Switch on the configure page to turn AI scores off
+- [x] Saved scores that survive redeploys (`data/scores.json`)
+- [x] Finished titles cached for good; ongoing shows refreshed every three weeks
+- [x] Option to link to IMDb instead of showing scene descriptions
+
+**Up next**
+
+- [ ] Public instance, so anyone can install it in one click
+- [ ] Pre-scored popular titles, so most say `AI` from day one
+- [ ] Episode-level scores for shows
+- [ ] Scene timing, so you can skip ahead
+- [ ] Personal cut-offs, e.g. "✅ Family · ✅ Us"
+- [ ] Family-friendly catalogs on the Stremio home screen
+- [ ] Your own override for a title after watching it
+
+The full backlog is in [BACKLOG.md](BACKLOG.md).
 
 ## License
 

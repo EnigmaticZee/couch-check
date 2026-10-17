@@ -4,6 +4,7 @@ Run:  .venv/bin/python server.py      then install http://localhost:7001/manifes
 """
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import os
@@ -26,7 +27,7 @@ def _load_env_file(path: Path) -> None:
 
 _load_env_file(Path(__file__).parent / ".env")
 
-from pg import cinemeta, classify, pages, rubric  # noqa: E402  (reads settings from the environment at import)
+from pg import cinemeta, classify, pages, rubric, scores  # noqa: E402  (reads settings from the environment at import)
 from pg.service import Service, score
 from pg.store import Store
 
@@ -35,6 +36,9 @@ PUBLIC_URL = os.environ.get("PG_PUBLIC_URL", "").rstrip("/")
 # "off" shows scene counts per level with a link to IMDb instead of IMDb's scene descriptions
 # (recommended for public instances; the descriptions are IMDb contributors' text).
 SCENE_TEXT = os.environ.get("PG_SCENE_TEXT", "on").lower() != "off"
+# Secret that lets tools/save_scores.py download this server's AI scores (GET /export/scores.json
+# with "Authorization: Bearer <token>"). The endpoint doesn't exist while this is unset.
+EXPORT_TOKEN = os.environ.get("PG_EXPORT_TOKEN", "")
 WAIT = float(os.environ.get("PG_WAIT", "8"))  # seconds a stream request waits for a first-time score
 DB_PATH = os.environ.get("PG_DB", str(Path(__file__).parent / "cache.sqlite3"))
 
@@ -311,6 +315,8 @@ class Handler(BaseHTTPRequestHandler):
         REQUEST.use_ai = not (path.startswith(EST_SEGMENT + "/") or "est=1" in query)
         if path.startswith(EST_SEGMENT + "/"):
             path = path[len(EST_SEGMENT):]
+        if path == "/export/scores.json":
+            return self.export_scores()
         if path == "/manifest.json":
             return self.send_json({**MANIFEST, "logo": f"{self.base_url()}/static/logo.png"})
         if path in STATIC_FILES:
@@ -354,6 +360,14 @@ class Handler(BaseHTTPRequestHandler):
             return self.guide_page(m.group(1), is_series="series=1" in query, artwork="art=0" not in query)
 
         self.send(404, "Not found", "text/plain")
+
+    def export_scores(self) -> None:
+        """This server's AI scores in data/scores.json format (item levels and summaries, no IMDb text)."""
+        sent = self.headers.get("Authorization", "")
+        if not EXPORT_TOKEN or not hmac.compare_digest(sent.encode(), f"Bearer {EXPORT_TOKEN}".encode()):
+            return self.send(404, "Not found", "text/plain")
+        titles = scores.from_cache(service.store.ai_scored(rubric.VERSION))
+        self.send_json({"rubric_version": rubric.VERSION, "titles": titles})
 
     def guide_page(self, imdb_id: str, is_series: bool, artwork: bool = True) -> None:
         entry = lookup(imdb_id, wait=0)

@@ -1,12 +1,11 @@
 # Backlog
 
-Couch Check rates intimate content 0–10 per title. Done so far: the main-screen chip, the in-app breakdown with summary, the stream-list row, the web breakdown page, live AI scores with keyword estimates as a fallback, an AI on/off setting, and offline scores in `data/scores.json`.
+Couch Check rates intimate content 0–10 per title. Done so far: the main-screen chip, the in-app breakdown with summary, the stream-list row, the web breakdown page, live AI scores with keyword estimates as a fallback, an AI on/off setting, and saved scores in `data/scores.json` that survive redeploys.
 
 ## Now
 
-1. **Public instance on BeamUp:** deploy to the community host (`a.baby-beamup.club`) with `beamup-cli`, using a GitHub account and an SSH key. Set the AI key and `PG_SCENE_TEXT=off` with `beamup secrets`, and publish the install link in the README.
-2. **Keep AI scores across redeploys:** BeamUp likely doesn't persist the cache, so add a step that saves the server's AI scores into `data/scores.json` before each deploy.
-3. **Pre-score popular titles:** score a list of popular movies and shows, so most titles say `AI` from day one and the free AI quota goes further.
+1. **Public instance on BeamUp:** deploy to the community host (`a.baby-beamup.club`) with `beamup-cli`, using a GitHub account and an SSH key. Set the AI key, `PG_SCENE_TEXT=off` and `PG_EXPORT_TOKEN` with `beamup secrets`, and run `tools/save_scores.py` before each redeploy, and publish the install link in the README.
+2. **Pre-score popular titles:** score a list of popular movies and shows, so most titles say `AI` from day one and the free AI quota goes further.
 
 ## Next
 

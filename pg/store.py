@@ -47,6 +47,17 @@ class Store:
             "summary": row[4],
         }
 
+    def ai_scored(self, version: int) -> list:
+        """Every cached title the AI scored under this rubric version, as entries with imdb_id."""
+        with self._lock:
+            rows = self._db.execute(
+                "SELECT imdb_id, fetched_at, guide, classified, classifier, summary FROM titles"
+                " WHERE classifier LIKE 'ai:%' AND classifier LIKE ?", (f"%@{version}",)
+            ).fetchall()
+        return [{"imdb_id": r[0], "fetched_at": r[1], "guide": json.loads(r[2]),
+                 "classified": json.loads(r[3]) if r[3] else None, "classifier": r[4], "summary": r[5]}
+                for r in rows]
+
     def put(self, imdb_id: str, guide: dict, classified: Optional[list], classifier: Optional[str],
             fetched_at: Optional[float] = None, summary: Optional[str] = None) -> None:
         """fetched_at: when the guide came from IMDb; defaults to now (pass the old value when only re-scoring)."""
