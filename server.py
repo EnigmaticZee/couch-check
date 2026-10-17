@@ -299,8 +299,11 @@ class Handler(BaseHTTPRequestHandler):
     def base_url(self) -> str:
         if PUBLIC_URL:
             return PUBLIC_URL
-        proto = self.headers.get("X-Forwarded-Proto", "http")
-        return f"{proto}://{self.headers.get('Host', f'localhost:{PORT}')}"
+        host = self.headers.get("Host", f"localhost:{PORT}")
+        # Hosts terminate HTTPS in front of the app and don't always say so; only local addresses are plain http.
+        local = host.split(":")[0] in ("localhost", "127.0.0.1", "[::1]") or host.startswith("192.168.")
+        proto = self.headers.get("X-Forwarded-Proto") or ("http" if local else "https")
+        return f"{proto}://{host}"
 
     def send(self, status: int, body, content_type: str, cache: int = 0) -> None:
         data = body if isinstance(body, bytes) else body.encode()
