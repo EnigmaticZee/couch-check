@@ -104,6 +104,8 @@ def stream_row(imdb_id: str, kind: str, base: str) -> tuple:
         if result.prolonged:
             detail += f" · {result.prolonged} prolonged"
         lines.append(detail)
+    if result.warnings:
+        lines.append(f"⚠️ {rubric.warning_text(result)}")
     extras = []
     if kind == "series":
         extras.append("Show-wide")
@@ -140,6 +142,8 @@ def meta_with_score(imdb_id: str, kind: str, base: str) -> tuple:
             if result.scenes:
                 label += f" · {result.scenes} scene{'s' if result.scenes != 1 else ''}"
             label += f" · {source_label(entry)}"
+            if result.warnings:
+                label += " · ⚠️"
         max_age = META_CACHE
 
     chip = {"name": label, "category": CHIP_CATEGORY, "url": url}
@@ -209,7 +213,8 @@ def breakdown_meta(imdb_id: str, base: str) -> tuple:
         meta["releaseInfo"] = "❔ No scene details"
         meta["description"] = "IMDb has no flagged Sex & Nudity items for this title yet."
     else:
-        meta["releaseInfo"] = f"{rubric.emoji(result.level)} {result.level}/10 · {rubric.name(result.level)} · {source_label(entry)}"
+        meta["releaseInfo"] = (f"{rubric.emoji(result.level)} {result.level}/10 · {rubric.name(result.level)} · {source_label(entry)}"
+                               + (" · ⚠️" if result.warnings else ""))
         facts = [f"{result.scenes} scene{'s' if result.scenes != 1 else ''} at level {rubric.SCENE_THRESHOLD}+"]
         if result.prolonged:
             facts.append(f"{result.prolonged} prolonged")
@@ -220,8 +225,10 @@ def breakdown_meta(imdb_id: str, base: str) -> tuple:
         facts.append("scored by AI" if source_label(entry) == "AI"
                      else "keyword estimate" + ("" if ai_wanted() else " (AI scores turned off)"))
         summary = entry.get("summary") if classify.is_ai(entry["classifier"]) else None
+        warning = (f"⚠️ Content warning: {rubric.warning_text(result)} (part of the story, not shown, so it isn't scored). "
+                   if result.warnings else "")
         meta["description"] = (
-            f"{summary or rubric.auto_summary(result, items)} "
+            warning + f"{summary or rubric.auto_summary(result, items)} "
             f"{(lambda t: t[:1].upper() + t[1:])(' · '.join(facts))}. "
             + ("Every flagged scene is listed on the right, most explicit first. " if SCENE_TEXT
                else "Scene counts by level are on the right; the scene descriptions are on IMDb. ")
@@ -249,12 +256,16 @@ def breakdown_rows(imdb_id: str, base: str) -> tuple:
     summary = (entry.get("summary") if classify.is_ai(entry["classifier"]) else None) or rubric.auto_summary(result, items)
     # The summary first, so it's visible in the list without reading the left side.
     rows = [{"name": "📝\nIn short", "description": "\n".join(textwrap.wrap(summary, ROW_WIDTH)), "externalUrl": url}]
+    if result.warnings:
+        rows.append({"name": "⚠️\nWarning", "externalUrl": url, "description": "\n".join(
+            textwrap.wrap(f"{rubric.warning_text(result)}: part of the story, not shown, so it isn't scored.", ROW_WIDTH))})
     if not SCENE_TEXT:
         return rows + level_rows(imdb_id, items), 3600
-    for i in sorted(items, key=lambda i: (-i.level, not i.is_scene)):
+    # Warning items first (they're level 0, so they'd otherwise sink to the bottom).
+    for i in sorted(items, key=lambda i: (not i.warning, -i.level, not i.is_scene)):
         tags = [t for t, on in (("Prolonged", i.prolonged), ("Overview", not i.is_scene), ("Spoiler", i.is_spoiler)) if on]
         rows.append({
-            "name": f"{rubric.emoji(i.level)} {i.level}\n{rubric.name(i.level)}",
+            "name": f"⚠️\nWarning" if i.warning else f"{rubric.emoji(i.level)} {i.level}\n{rubric.name(i.level)}",
             # Stremio cuts each line of a row short, so wrap the text over several lines.
             "description": "\n".join(textwrap.wrap(i.text, ROW_WIDTH) + ([" · ".join(tags)] if tags else [])),
             "externalUrl": url,
@@ -265,8 +276,12 @@ def breakdown_rows(imdb_id: str, base: str) -> tuple:
 def level_rows(imdb_id: str, items: list) -> list:
     """One row per level with its scene count, linking to IMDb for the descriptions (PG_SCENE_TEXT=off)."""
     rows = []
-    for level in sorted({i.level for i in items}, reverse=True):
-        in_level = [i for i in items if i.level == level]
+    warned = [i for i in items if i.warning]
+    if warned:
+        rows.append({"name": "⚠️\nWarning", "externalUrl": pages.imdb_url(imdb_id),
+                     "description": f"{len(warned)} item{'s' if len(warned) != 1 else ''}\nRead them on IMDb ↗"})
+    for level in sorted({i.level for i in items if not i.warning}, reverse=True):
+        in_level = [i for i in items if i.level == level and not i.warning]
         scenes = sum(1 for i in in_level if i.is_scene)
         prolonged = sum(1 for i in in_level if i.prolonged)
         counts = f"{scenes} scene{'s' if scenes != 1 else ''}" if scenes else "General comments"

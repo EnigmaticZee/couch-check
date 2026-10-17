@@ -41,8 +41,9 @@ def main() -> None:
             problems.append(f"{imdb_id}: scored {len(set(items) & expected)}/{len(expected)} items, "
                             f"{len(set(items) - expected)} unknown")
             continue
-        bad = [k for k, v in items.items() if not (isinstance(v, list) and len(v) == 3
-               and isinstance(v[0], int) and 0 <= v[0] <= 10 and v[1] in (0, 1) and v[2] in (0, 1))]
+        bad = [k for k, v in items.items() if not (isinstance(v, list) and len(v) in (3, 4)
+               and isinstance(v[0], int) and 0 <= v[0] <= 10 and v[1] in (0, 1) and v[2] in (0, 1)
+               and (len(v) == 3 or (v[0] == 0 and v[3] in rubric.WARNINGS)))]
         if bad:
             problems.append(f"{imdb_id}: malformed scores for {bad[:3]}")
             continue

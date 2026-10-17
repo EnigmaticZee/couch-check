@@ -104,6 +104,7 @@ Rules:
 {RULES_TEXT}
 - is_scene: true if the item describes a specific scene or moment; false if it is a general overview or opinion ("overall mild", "lots of sexual content throughout", "not as bad as other shows").
 - prolonged: true if the item says the content is long, lingering, extended, repeated, throughout, or lasts more than a few seconds.
+- {rubric.WARNING_RULE}
 
 Return one entry per item, using the item's number as index.
 
@@ -113,7 +114,7 @@ Also write a summary: 2 or 3 short, plain sentences for someone deciding whether
 JSON_INSTRUCTION = """
 
 Respond with JSON only, in exactly this shape:
-{"summary": "...", "items": [{"index": 0, "level": 0, "is_scene": true, "prolonged": false}, ...]}"""
+{"summary": "...", "items": [{"index": 0, "level": 0, "is_scene": true, "prolonged": false, "warning": null}, ...]}"""
 
 
 
@@ -149,10 +150,13 @@ def _align(texts: List[str], entries: list) -> List[dict]:
     out = []
     for i, t in enumerate(texts):
         e = by_index.get(i)
-        out.append(
-            {"level": e["level"], "is_scene": bool(e.get("is_scene", True)), "prolonged": bool(e.get("prolonged"))}
-            if e else _with_keywords(t)
-        )
+        if not e:
+            out.append(_with_keywords(t))
+            continue
+        # Warnings are only for unscorable (level-0) items; anything shown is scored instead.
+        warning = e.get("warning") if e["level"] == 0 and e.get("warning") in rubric.WARNINGS else None
+        out.append({"level": e["level"], "is_scene": bool(e.get("is_scene", True)),
+                    "prolonged": bool(e.get("prolonged")), "warning": warning})
     return out
 
 
@@ -225,6 +229,14 @@ _TALK = re.compile(r"\b(reference|refers|joke|jokes|innuendo|says|asks|talks?|me
 # Nudity only in artwork caps at Suggestive (rubric v3).
 _ARTWORK = re.compile(r"\b(drawings?|sketch(es)?|paintings?|portraits?|posters?|statues?|sculptures?)\b", re.I)
 _PROLONGED = re.compile(r"prolonged|lengthy|long|extended|lingering|several (minutes|seconds)", re.I)
+# Rough keyword checks for the warning themes (rubric.WARNINGS), used for estimates only.
+_WARNINGS = [
+    ("minor", re.compile(r"(under-?age|minor|\b1[0-7]-year-old|\bteen(age|ager)?s?\b|child|student).{0,80}"
+                         r"(sexual|relationship|affair|romance|romantic|seduc|groom)|(sexual|relationship|affair|romance|"
+                         r"romantic|seduc|groom).{0,80}(under-?age|minor|\b1[0-7]-year-old|\bteen(age|ager)?s?\b|child|student)", re.I)),
+    ("incest", re.compile(r"\bincest", re.I)),
+    ("exploitation", re.compile(r"traffick|forced (into )?(prostitution|sex work)|sex slave|coerced into sex", re.I)),
+]
 _OVERVIEW = re.compile(r"^(overall|in general|generally|mostly|throughout|this (film|movie|show|series))", re.I)
 
 
@@ -246,4 +258,6 @@ def _with_keywords(text: str) -> dict:
                 break
     if _NOT_SHOWN.search(text):
         level = min(level, 4)
-    return {"level": level, "is_scene": not _OVERVIEW.search(text.strip()), "prolonged": bool(_PROLONGED.search(text))}
+    warning = next((w for w, pattern in _WARNINGS if pattern.search(text)), None) if level == 0 else None
+    return {"level": level, "is_scene": not _OVERVIEW.search(text.strip()), "prolonged": bool(_PROLONGED.search(text)),
+            "warning": warning}

@@ -56,7 +56,8 @@ def main(ids: list) -> None:
         classify.SYSTEM
         + f"\n\nRubric version: {rubric.VERSION}\n\n"
         "Output: work/scored.json as {\"<imdb id>\": {\"summary\": \"...\", \"items\": "
-        "{\"<item id>\": [level, is_scene (0/1), prolonged (0/1)], ...}}, ...}\n"
+        "{\"<item id>\": [level, is_scene (0/1), prolonged (0/1)] (add the warning key as a 4th value "
+        "on level-0 warning items), ...}}, ...}\n"
     )
     total = sum(len(p["items"]) for p in pending)
     print(f"{len(pending)} titles, {total} items -> work/pending.json")

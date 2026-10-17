@@ -137,6 +137,7 @@ def score(entry: dict) -> Tuple[rubric.Result, list]:
             level=c["level"],
             is_scene=c["is_scene"],
             prolonged=c["prolonged"],
+            warning=c.get("warning"),
         )
         for item, c in zip(guide.get("items", []), classified)
     ]

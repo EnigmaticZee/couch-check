@@ -1,7 +1,7 @@
 """AI scores made offline (see tools/), published in data/scores.json.
 
 The file holds only our own derived data: for each title, IMDb's item IDs mapped to
-[level, is_scene, prolonged]. IMDb's text is never stored in it; the server fetches
+[level, is_scene, prolonged] plus, for warning items, the warning key as a fourth value. IMDb's text is never stored in it; the server fetches
 that live, one title at a time, and matches it to these scores by item ID.
 """
 from __future__ import annotations
@@ -64,7 +64,8 @@ def lookup(imdb_id: str, items: List[dict], fallback) -> Optional[List[dict]]:
     out = []
     for i in items:
         s = stored.get(i["id"])
-        out.append({"level": s[0], "is_scene": bool(s[1]), "prolonged": bool(s[2])} if s else fallback(i["text"]))
+        out.append({"level": s[0], "is_scene": bool(s[1]), "prolonged": bool(s[2]),
+                    "warning": s[3] if len(s) > 3 else None} if s else fallback(i["text"]))
     return out
 
 
@@ -108,6 +109,7 @@ def from_cache(rows) -> dict:
             "scored": date.fromtimestamp(e["fetched_at"]).isoformat(),
             "summary": e.get("summary"),
             "items": {i["id"]: [c["level"], int(bool(c["is_scene"])), int(bool(c["prolonged"]))]
+                      + ([c["warning"]] if c.get("warning") else [])
                       for i, c in zip(items, e["classified"])},
         }
     return out

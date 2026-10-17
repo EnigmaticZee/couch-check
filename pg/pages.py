@@ -64,6 +64,8 @@ border-radius:12px;font-weight:600;background:transparent;font:inherit;font-weig
 code{background:var(--accent-soft);padding:2px 6px;border-radius:6px;font-size:.88em;word-break:break-all}
 .foot{color:var(--muted);font-size:.82rem;text-align:center;margin-top:28px}
 .muted{color:var(--muted);font-size:.9rem}
+.lv-warn{background:#b8326f}
+.warning{border-color:#b8326f;background:rgba(184,50,111,.10)}.warning h3{color:#d9518f}.warning p{margin:0}
 .back{display:inline-block;margin:0 0 14px;padding:8px 14px;border-radius:10px;background:var(--accent-soft);
 color:var(--accent);font-weight:600;text-decoration:none;font-size:.92rem}
 """
@@ -184,13 +186,22 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
         text = escape(i.text)
         if i.is_spoiler:
             text = f'<details class="spoiler"><summary>Spoiler: tap to show</summary>{text}</details>'
-        return (f'<li><span class="chip lv-{color(i.level)}" title="{escape(rubric.name(i.level))}">{i.level}</span>'
-                f"<div>{text}{tag_html}</div></li>")
+        if i.warning:
+            chip = f'<span class="chip lv-warn" title="{escape(rubric.WARNINGS[i.warning])}">⚠️</span>'
+        else:
+            chip = f'<span class="chip lv-{color(i.level)}" title="{escape(rubric.name(i.level))}">{i.level}</span>'
+        return f"<li>{chip}<div>{text}{tag_html}</div></li>"
+
+    warned = [i for i in items if i.warning]
+    scored = [i for i in items if not i.warning]
 
     if items and not show_text:
         lines = []
-        for level in sorted({i.level for i in items}, reverse=True):
-            in_level = [i for i in items if i.level == level]
+        if warned:
+            lines.append(f'<li><span class="chip lv-warn">⚠️</span><div><b>Warning</b><br><span class="muted">'
+                         f'{escape(rubric.warning_text(result))} · {len(warned)} item{"s" if len(warned) != 1 else ""}</span></div></li>')
+        for level in sorted({i.level for i in scored}, reverse=True):
+            in_level = [i for i in scored if i.level == level]
             scenes = sum(1 for i in in_level if i.is_scene)
             prolonged = sum(1 for i in in_level if i.prolonged)
             count = f"{scenes} scene{'s' if scenes != 1 else ''}" if scenes else "general comments"
@@ -202,8 +213,12 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
                       f'<a href="{escape(imdb_url(imdb_id))}">Read them on IMDb ↗</a></p></div>')
     elif items:
         groups = []
-        for level in sorted({i.level for i in items}, reverse=True):
-            in_level = sorted((i for i in items if i.level == level), key=lambda i: not i.is_scene)
+        if warned:
+            groups.append(f'<div class="group"><span class="chip lv-warn" style="width:22px;height:22px;border-radius:6px;'
+                          f'font-size:.7rem">⚠️</span>Warning <small>· {len(warned)}</small></div>'
+                          f'<ul class="items">{"".join(item_html(i) for i in warned)}</ul>')
+        for level in sorted({i.level for i in scored}, reverse=True):
+            in_level = sorted((i for i in scored if i.level == level), key=lambda i: not i.is_scene)
             groups.append(f'<div class="group"><span class="chip lv-{color(level)}" style="width:22px;height:22px;'
                           f'border-radius:6px;font-size:.75rem">{level}</span>{escape(rubric.name(level))}'
                           f' <small>· {len(in_level)}</small></div><ul class="items">{"".join(item_html(i) for i in in_level)}</ul>')
@@ -227,6 +242,9 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
     source = "Summary by AI" if ai and entry.get("summary") else "Summary from the scores"
     summary_html = f"""<div class="card summary"><h3>In short</h3><p>{escape(summary)}</p>
 <p class="src">{source}</p></div>"""
+    if result.warnings:
+        summary_html = f"""<div class="card warning"><h3>⚠️ Content warning</h3><p><b>{escape(rubric.warning_text(result))}</b>.
+It's part of the story but not shown, so it isn't scored. The items are listed first below.</p></div>""" + summary_html
     title_link = f"stremio:///detail/{'series' if is_series else 'movie'}/{imdb_id}"
     back = f"""<a class="back" id="back" href="{escape(title_link)}">← Back to Stremio</a>
 <script>

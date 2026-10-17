@@ -1,11 +1,11 @@
 """The Sex/Nudity ladder and how per-scene levels roll up into a title result."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional
 
 # Bump when the ladder's meaning changes, so AI-scored titles get re-scored.
-VERSION = 4
+VERSION = 5
 
 # (level, short name, what you'll see)
 LADDER = [
@@ -36,6 +36,21 @@ RULES = [
     "Sexual assault scenes are scored by explicitness like any other scene.",
     "Violence, profanity, drugs and frightening content are irrelevant: score them 0 unless they include sexual content or nudity.",
 ]
+
+# Serious themes that can't be scored because nothing is shown (the item would be level 0).
+# They're shown as a warning in place of the score and never count toward the title's level.
+# Anything actually shown on screen is scored on the ladder as usual instead.
+WARNINGS = {
+    "minor": "Involves a minor",
+    "incest": "Incest",
+    "exploitation": "Exploitation",
+}
+WARNING_RULE = (
+    "warning: only for items at level 0. If such an item still involves one of these serious themes, "
+    "talked about or part of the story but not shown, set warning to its key: "
+    "\"minor\" (romantic or sexual involvement of someone under 18), \"incest\" (between family members), "
+    "\"exploitation\" (trafficking, coercion or forced sex work). Otherwise, and for every item above level 0, use null."
+)
 
 # Scenes at or above this level count toward the "N scenes" frequency.
 SCENE_THRESHOLD = 4
@@ -72,6 +87,7 @@ class ScoredItem:
     level: int
     is_scene: bool  # a specific scene, as opposed to a general/overview statement
     prolonged: bool
+    warning: Optional[str] = None  # a WARNINGS key, only on level-0 items
 
 
 @dataclass
@@ -81,11 +97,13 @@ class Result:
     prolonged: int
     low_confidence: bool
     votes: int
+    warnings: List[str] = field(default_factory=list)  # WARNINGS keys present in the title
 
 
 def summarize(items: List[ScoredItem], votes: int) -> Result:
     if not items:
         return Result(level=None, scenes=0, prolonged=0, low_confidence=True, votes=votes)
+    warnings = [w for w in WARNINGS if any(i.warning == w for i in items)]
     level = max(i.level for i in items)
     flagged = [i for i in items if i.is_scene and i.level >= SCENE_THRESHOLD]
     return Result(
@@ -94,7 +112,13 @@ def summarize(items: List[ScoredItem], votes: int) -> Result:
         prolonged=sum(1 for i in flagged if i.prolonged),
         low_confidence=len([i for i in items if i.is_scene]) < MIN_SCENE_ITEMS and votes < MIN_VOTES,
         votes=votes,
+        warnings=warnings,
     )
+
+
+def warning_text(result: Result) -> str:
+    """e.g. "Involves a minor" or "Involves a minor, Incest", for titles with warnings."""
+    return ", ".join(WARNINGS[w] for w in result.warnings)
 
 
 def auto_summary(result: Result, items: List[ScoredItem]) -> str:
