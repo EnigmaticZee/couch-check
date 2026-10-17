@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <linearGradient id="sc-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#33246B"/>
+      <stop offset="0.55" stop-color="#1B1438"/>
+      <stop offset="1" stop-color="#110D20"/>
+    </linearGradient>
+    <radialGradient id="sc-glow" cx="0.22" cy="0.3" r="0.5">
+      <stop offset="0" stop-color="#7B5BF5" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#7B5BF5" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sc-logo-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4A2F8F"/>
+      <stop offset="1" stop-color="#22184A"/>
+    </linearGradient>
+    <linearGradient id="sc-cushion" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFE9C9"/>
+      <stop offset="1" stop-color="#F6CF98"/>
+    </linearGradient>
+    <filter id="sc-shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- canvas -->
+  <rect width="1280" height="640" rx="32" fill="url(#sc-bg)"/>
+  <rect width="1280" height="640" rx="32" fill="url(#sc-glow)"/>
+
+  <!-- left: identity -->
+  <g transform="translate(72 92) scale(0.25)" filter="url(#sc-shadow)">
+    <rect width="512" height="512" rx="116" fill="url(#sc-logo-bg)"/>
+    <rect x="140" y="182" width="232" height="124" rx="38" fill="url(#sc-cushion)"/>
+    <rect x="164" y="282" width="184" height="70" rx="22" fill="#F0BF7E"/>
+    <rect x="92" y="244" width="78" height="128" rx="32" fill="url(#sc-cushion)"/>
+    <rect x="342" y="244" width="78" height="128" rx="32" fill="url(#sc-cushion)"/>
+    <rect x="118" y="364" width="26" height="38" rx="9" fill="#F0BF7E"/>
+    <rect x="368" y="364" width="26" height="38" rx="9" fill="#F0BF7E"/>
+    <circle cx="378" cy="160" r="74" fill="#2FB866" stroke="#2A1D57" stroke-width="16"/>
+    <path d="M342 162 L368 188 L414 138" fill="none" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <text x="72" y="284" font-size="58" font-weight="800" fill="#F4F1FF" letter-spacing="-1">Couch Check</text>
+  <rect x="456" y="246" width="74" height="30" rx="15" fill="#A58BFF" fill-opacity="0.18"/>
+  <text x="493" y="267" font-size="14" font-weight="700" fill="#C6B6FF" text-anchor="middle" letter-spacing="1.5">BETA</text>
+
+  <text x="72" y="338" font-size="25" fill="#C9C3DD">Know what to expect before</text>
+  <text x="72" y="372" font-size="25" fill="#C9C3DD">you press play with family.</text>
+
+  <g font-size="19" fill="#EEEBF7">
+    <circle cx="82" cy="437" r="5" fill="#A58BFF"/>
+    <text x="98" y="444">One clear score from 0 to 10</text>
+    <circle cx="82" cy="477" r="5" fill="#A58BFF"/>
+    <text x="98" y="484">Right on every title's main screen</text>
+    <circle cx="82" cy="517" r="5" fill="#A58BFF"/>
+    <text x="98" y="524">A short summary and every flagged scene</text>
+  </g>
+  <text x="72" y="584" font-size="15" fill="#8F89AA">A Stremio addon · Open source · MIT</text>
+
+  <!-- right: how it looks -->
+  <g filter="url(#sc-shadow)">
+    <!-- chip on the main screen -->
+    <rect x="640" y="64" width="568" height="158" rx="22" fill="#120F1F" stroke="#2F2A47"/>
+    <text x="672" y="106" font-size="13" fill="#8D87A6" letter-spacing="2.2">COUCH CHECK</text>
+    <rect x="672" y="124" width="408" height="52" rx="26" fill="#2A2540"/>
+    <circle cx="700" cy="150" r="10" fill="#E0B232"/>
+    <text x="720" y="158" font-size="21" fill="#EEEBF7">4/10 · Implied · 5 scenes · AI</text>
+    <text x="672" y="202" font-size="15" fill="#8D87A6">On the title's main screen. Tap it for the breakdown.</text>
+
+    <!-- row in the stream list -->
+    <rect x="640" y="242" width="568" height="148" rx="22" fill="#120F1F" stroke="#2F2A47"/>
+    <circle cx="682" cy="285" r="10" fill="#E0B232"/>
+    <text x="702" y="293" font-size="21" font-weight="600" fill="#EEEBF7">4/10</text>
+    <text x="790" y="292" font-size="19" fill="#DDD8EE">Implied · AI score</text>
+    <text x="790" y="322" font-size="19" fill="#DDD8EE">5 scenes</text>
+    <text x="790" y="352" font-size="19" fill="#BDB8D2">Tap: full list in browser ↗</text>
+    <text x="1176" y="292" font-size="13" fill="#8D87A6" text-anchor="end" letter-spacing="1.6">STREAM LIST</text>
+
+    <!-- score card -->
+    <rect x="640" y="410" width="568" height="166" rx="22" fill="#1D1930" stroke="#2F2A47"/>
+    <rect x="672" y="438" width="92" height="92" rx="24" fill="#46B874"/>
+    <text x="706" y="503" font-size="54" font-weight="800" fill="#FFFFFF" text-anchor="middle">1</text>
+    <text x="738" y="503" font-size="17" font-weight="600" fill="#FFFFFF" fill-opacity="0.8" text-anchor="middle">/10</text>
+    <text x="788" y="474" font-size="26" font-weight="700" fill="#F4F1FF">Affection</text>
+    <text x="788" y="506" font-size="18" fill="#A6A0BD">Hugs, quick kisses, holding hands.</text>
+    <g>
+      <rect x="672" y="550" width="40" height="8" rx="4" fill="#46B874" fill-opacity="0.32"/>
+      <rect x="718" y="545" width="40" height="18" rx="9" fill="#46B874" stroke="#1D1930" stroke-width="3"/>
+      <rect x="716" y="543" width="44" height="22" rx="11" fill="none" stroke="#46B874" stroke-width="2"/>
+      <rect x="764" y="550" width="40" height="8" rx="4" fill="#46B874" fill-opacity="0.32"/>
+      <rect x="810" y="550" width="40" height="8" rx="4" fill="#E0B232" fill-opacity="0.32"/>
+      <rect x="856" y="550" width="40" height="8" rx="4" fill="#E0B232" fill-opacity="0.32"/>
+      <rect x="902" y="550" width="40" height="8" rx="4" fill="#EF8C48" fill-opacity="0.32"/>
+      <rect x="948" y="550" width="40" height="8" rx="4" fill="#EF8C48" fill-opacity="0.32"/>
+      <rect x="994" y="550" width="40" height="8" rx="4" fill="#EE6A6A" fill-opacity="0.32"/>
+      <rect x="1040" y="550" width="40" height="8" rx="4" fill="#EE6A6A" fill-opacity="0.32"/>
+      <rect x="1086" y="550" width="40" height="8" rx="4" fill="#EE6A6A" fill-opacity="0.32"/>
+      <rect x="1132" y="550" width="44" height="8" rx="4" fill="#EE6A6A" fill-opacity="0.32"/>
+    </g>
+  </g>
+</svg>

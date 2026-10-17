@@ -1,12 +1,5 @@
 <p align="center">
-  <img src="static/logo.svg" alt="Couch Check logo" width="112">
-</p>
-
-<h1 align="center">Couch Check</h1>
-
-<p align="center">
-  <b>Know what to expect before you press play with family.</b><br>
-  A Stremio addon that rates every movie and show 0–10 for intimate content, with every flagged scene listed.
+  <img src="docs/showcase.svg" alt="Couch Check: know what to expect before you press play with family. Shows the score chip on a title's main screen, the row in the stream list, and a score card." width="100%">
 </p>
 
 <p align="center">
@@ -29,17 +22,6 @@ Couch Check reads each title's IMDb parents guide and turns its intimate-content
 - **A breakdown inside Stremio.** Tap the chip for a short summary and every flagged scene, grouped by level, with spoilers hidden.
 - **In every stream list.** A row at the top of each episode's and movie's sources.
 - **AI score or quick estimate.** An AI reads every scene description. Until it has, a keyword estimate fills in, clearly labelled.
-
-## How it looks
-
-<p align="center">
-  <img src="docs/preview.png" alt="The Couch Check chip on a title's main screen and the row in the stream list" width="345">
-  &nbsp;
-  <img src="docs/score.png" alt="A title's score card: 1 out of 10, Affection, with its place on the 0 to 10 scale" width="320">
-</p>
-<p align="center">
-  <img src="docs/scale.png" alt="The 0 to 10 scale, from green to red" width="345">
-</p>
 
 ## Install
 
