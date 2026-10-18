@@ -3,12 +3,13 @@
 Samsung's Stremio app (Tizen) asks for meta and streams, but shows neither the Couch Check chip (a custom links
 category) nor the stream row (link-only, and a TV has no browser). Every app shows the description, so for
 Tizen requests the chip's text becomes its first line. Other apps get the meta unchanged.
+
+On by default, since it only changes answers to Samsung TVs. PG_TV_DESCRIPTION=off switches it off.
 """
 from __future__ import annotations
 
+import os
 from typing import List, Union
-
-from . import enabled
 
 NAME = "tv_description"
 # Matched against the request's User-Agent, e.g. "Mozilla/5.0 (SMART-TV; LINUX; Tizen 9.0)".
@@ -16,7 +17,7 @@ TV_AGENTS = ("tizen",)
 
 
 def is_on() -> bool:
-    return enabled(NAME)
+    return os.environ.get("PG_TV_DESCRIPTION", "on").lower() != "off"
 
 
 def is_tv(user_agent: str) -> bool:
