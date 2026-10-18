@@ -94,6 +94,8 @@ Set these in `.env` locally, or as environment variables on your host.
 | Variable | Default | |
 |---|---|---|
 | `PG_AI_BASE_URL`, `PG_AI_API_KEY`, `PG_AI_MODEL` | — | OpenAI-compatible API for AI scores (e.g. Groq) |
+| `PG_AI_FALLBACK_KEY` | — | A backup key from another account, used while the main key is over its limit |
+| `PG_AI_FALLBACK_MODEL` | — | A backup model on the main key (e.g. a smaller one), used while the main model is over its limit |
 | `PG_AI_MIN_INTERVAL` | `1.5` | Seconds between AI calls |
 | `PG_AI_DAILY_LIMIT` | `500` | Max AI calls per day; beyond that, new titles get estimates |
 | `PG_AI_REASONING_EFFORT` | `low` for gpt-oss | Reasoning effort for reasoning models |

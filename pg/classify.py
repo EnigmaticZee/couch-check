@@ -2,7 +2,8 @@
 
 An AI model reads the free-text items when one is configured: any OpenAI-compatible
 API such as Groq's free tier (PG_AI_BASE_URL + PG_AI_API_KEY + PG_AI_MODEL).
-Otherwise, or when the AI is unavailable or over its limits, a keyword matcher
+When the main key or model hits its limit, an optional backup key (PG_AI_FALLBACK_KEY) and/or backup
+model (PG_AI_FALLBACK_MODEL) take over until it recovers. Otherwise, or when the AI is unavailable or over its limits, a keyword matcher
 gives a rougher estimate.
 """
 from __future__ import annotations
@@ -29,6 +30,29 @@ AI_MODEL = os.environ.get("PG_AI_MODEL", "")
 # Reasoning models (e.g. gpt-oss) think before answering, and that counts against token limits;
 # light thinking is plenty for placing items on the ladder.
 AI_REASONING_EFFORT = os.environ.get("PG_AI_REASONING_EFFORT") or ("low" if "gpt-oss" in AI_MODEL else "")
+# Backups for when the main key or model hits its limit (e.g. Groq's tokens per day).
+AI_FALLBACK_KEY = os.environ.get("PG_AI_FALLBACK_KEY", "")
+AI_FALLBACK_MODEL = os.environ.get("PG_AI_FALLBACK_MODEL", "")
+
+
+class Route:
+    """One key + model the AI can be reached through, paused on its own when it hits a limit."""
+
+    def __init__(self, name: str, key: str, model: str):
+        self.name, self.key, self.model = name, key, model
+        self.paused_until = 0.0
+
+    def reasoning_effort(self) -> str:
+        return os.environ.get("PG_AI_REASONING_EFFORT") or ("low" if "gpt-oss" in self.model else "")
+
+
+ROUTES = [Route("main", AI_API_KEY, AI_MODEL)]
+if AI_FALLBACK_KEY:
+    ROUTES.append(Route("backup key", AI_FALLBACK_KEY, AI_MODEL))
+if AI_FALLBACK_MODEL:
+    ROUTES.append(Route("backup model", AI_API_KEY, AI_FALLBACK_MODEL))
+    if AI_FALLBACK_KEY:
+        ROUTES.append(Route("backup key and model", AI_FALLBACK_KEY, AI_FALLBACK_MODEL))
 
 
 def provider() -> Optional[str]:
@@ -44,7 +68,10 @@ def ai_enabled() -> bool:
 
 
 def ai_label() -> str:
-    return f"{AI_MODEL} via {AI_BASE_URL}" if provider() else ""
+    if not provider():
+        return ""
+    backups = [r.name for r in ROUTES[1:]]
+    return f"{AI_MODEL} via {AI_BASE_URL}" + (f" (backups: {', '.join(backups)})" if backups else "")
 
 
 def is_ai(classifier: Optional[str]) -> bool:
@@ -149,7 +176,8 @@ def classify(texts: List[str], about: str = "") -> Tuple[List[dict], str, Option
     if provider() and limiter.acquire():
         result = _with_openai(texts, about)
         if result is not None:
-            return _recheck_top(texts, result[0], about), f"ai:{AI_MODEL}@{rubric.VERSION}", result[1]
+            classified, summary, model = result
+            return _recheck_top(texts, classified, about), f"ai:{model}@{rubric.VERSION}", summary
     return keywords(texts), "keywords", None
 
 
@@ -247,7 +275,8 @@ def _recheck_top(texts: List[str], classified: List[dict], about: str = "") -> L
         return classified
     i = sorted((i for i, c in enumerate(classified) if c["level"] == top_level),
                key=lambda i: not classified[i]["is_scene"])[0]
-    answer = _chat(RECHECK, f"{about}\nItem: {json.dumps(texts[i], ensure_ascii=False)}\nGiven level: {top_level}".strip())
+    answer = (_chat(RECHECK, f"{about}\nItem: {json.dumps(texts[i], ensure_ascii=False)}\nGiven level: {top_level}".strip())
+              or (None,))[0]
     if not isinstance(answer, dict) or not isinstance(answer.get("level"), int) or not 0 <= answer["level"] <= 10:
         return classified
     fixed = _genre_nonsexual(texts[i], _vague_cap(texts[i], _clean({
@@ -258,17 +287,40 @@ def _recheck_top(texts: List[str], classified: List[dict], about: str = "") -> L
     return classified[:i] + [{**fixed, "warning": classified[i].get("warning") if fixed["level"] == 0 else None}] + classified[i + 1:]
 
 
-def _with_openai(texts: List[str], about: str = "") -> Optional[Tuple[List[dict], Optional[str]]]:
-    parsed = _chat(SYSTEM + JSON_INSTRUCTION, f"{about}\nItems:\n{_numbered(texts)}".strip())
-    if not isinstance(parsed, dict):
+def _with_openai(texts: List[str], about: str = "") -> Optional[Tuple[List[dict], Optional[str], str]]:
+    """(items, summary, model that answered), or None."""
+    answer = _chat(SYSTEM + JSON_INSTRUCTION, f"{about}\nItems:\n{_numbered(texts)}".strip())
+    if answer is None or not isinstance(answer[0], dict):
         return None
-    return _align(texts, parsed.get("items"), about), _summary(parsed.get("summary"))
+    parsed, model = answer
+    return _align(texts, parsed.get("items"), about), _summary(parsed.get("summary")), model
 
 
-def _chat(system: str, user: str) -> Optional[dict]:
-    """One JSON chat call to the AI provider; None if it fails (the caller falls back)."""
+def _chat(system: str, user: str) -> Optional[Tuple[dict, str]]:
+    """One JSON chat call, through the first route that isn't paused: (answer, model) or None (the caller falls back).
+
+    A route that hits a limit is paused on its own and the next one is tried; only when every route is paused
+    does AI scoring pause as a whole.
+    """
+    for route in ROUTES:
+        if time.time() < route.paused_until:
+            continue
+        outcome = _call(route, system, user)
+        if outcome == "next":
+            continue
+        if outcome is None:
+            return None
+        return outcome, route.model
+    waits = [r.paused_until - time.time() for r in ROUTES]
+    if min(waits) > 0:
+        limiter.pause(min(waits))
+    return None
+
+
+def _call(route: Route, system: str, user: str):
+    """The parsed answer, None on a failure, or "next" when this route hit a limit (try the next one)."""
     body = {
-        "model": AI_MODEL,
+        "model": route.model,
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -276,13 +328,13 @@ def _chat(system: str, user: str) -> Optional[dict]:
         "response_format": {"type": "json_object"},
         "temperature": 0,
     }
-    if AI_REASONING_EFFORT:
-        body["reasoning_effort"] = AI_REASONING_EFFORT
+    if route.reasoning_effort():
+        body["reasoning_effort"] = route.reasoning_effort()
     req = urllib.request.Request(
         f"{AI_BASE_URL}/chat/completions",
         data=json.dumps(body).encode(),
         # Some providers (Groq, behind Cloudflare) reject Python's default User-Agent with a 403.
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {AI_API_KEY}",
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {route.key}",
                  "User-Agent": "couch-check/2.0"},
     )
     try:
@@ -292,13 +344,14 @@ def _chat(system: str, user: str) -> Optional[dict]:
         if e.code == 429:
             retry = e.headers.get("Retry-After")
             seconds = float(retry) if retry and retry.replace(".", "", 1).isdigit() else 60
-            limiter.pause(seconds)
-            log.warning("AI rate limited; pausing AI scoring for %ds", seconds)
-        elif e.code in (401, 403):
-            limiter.pause(3600)
-            log.error("AI provider rejected the API key (HTTP %d); pausing AI scoring for an hour", e.code)
-        else:
-            log.warning("AI provider error HTTP %d; using keyword matching", e.code)
+            route.paused_until = time.time() + seconds
+            log.warning("AI %s (%s) rate limited; pausing it for %ds", route.name, route.model, seconds)
+            return "next"
+        if e.code in (401, 403):
+            route.paused_until = time.time() + 3600
+            log.error("AI provider rejected the %s (HTTP %d); pausing it for an hour", route.name, e.code)
+            return "next"
+        log.warning("AI provider error HTTP %d; using keyword matching", e.code)
         return None
     except (urllib.error.URLError, OSError, ValueError) as e:
         log.warning("Could not reach AI provider (%s); using keyword matching", e)

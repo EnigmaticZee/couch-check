@@ -5,10 +5,7 @@ Uses production's AI settings, pacing and daily limit (pg.classify), so ISCCI an
 from __future__ import annotations
 
 import json
-import logging
 import re
-import urllib.error
-import urllib.request
 from typing import List, Optional, Tuple
 
 from pg import classify as base
@@ -16,7 +13,6 @@ from pg import rubric as base_rubric
 
 from . import rubric
 
-log = logging.getLogger("experimental.iscci")
 
 LADDER_TEXT = "\n".join(f"{lvl} — {name}: {desc}" for lvl, name, desc in rubric.LADDER)
 RULES_TEXT = "\n".join(f"- {r}" for r in rubric.RULES)
@@ -50,8 +46,8 @@ Respond with JSON only, in exactly this shape:
 {"summary": "...", "items": [{"index": 0, "level": 0, "tag": "None", "nonsexual": null, "is_scene": true, "prolonged": false, "momentary": false, "amount": "once", "warning": null}, ...]}"""
 
 
-def classifier_name() -> str:
-    return f"ai:{base.AI_MODEL}@{rubric.TAG}"
+def classifier_name(model: str = "") -> str:
+    return f"ai:{model or base.AI_MODEL}@{rubric.TAG}"
 
 
 def classify(texts: List[str]) -> Tuple[List[dict], str, Optional[str]]:
@@ -61,7 +57,7 @@ def classify(texts: List[str]) -> Tuple[List[dict], str, Optional[str]]:
     if base.provider() and base.limiter.acquire():
         result = _with_ai(texts)
         if result is not None:
-            return result[0], classifier_name(), result[1]
+            return result[0], classifier_name(result[2]), result[1]
     return keywords(texts), "keywords", None
 
 
@@ -85,47 +81,14 @@ def _align(texts: List[str], entries) -> List[dict]:
     return [_clean(by_index[i], t) if i in by_index else keyword_one(t) for i, t in enumerate(texts)]
 
 
-def _with_ai(texts: List[str]) -> Optional[Tuple[List[dict], Optional[str]]]:
+def _with_ai(texts: List[str]) -> Optional[Tuple[List[dict], Optional[str], str]]:
+    """(items, summary, model), through production's AI routes (main, then any backups)."""
     numbered = "\n".join(f"{i}. {json.dumps(t, ensure_ascii=False)}" for i, t in enumerate(texts))
-    body = {
-        "model": base.AI_MODEL,
-        "messages": [{"role": "system", "content": SYSTEM + JSON_INSTRUCTION},
-                     {"role": "user", "content": f"Items:\n{numbered}"}],
-        "response_format": {"type": "json_object"},
-        "temperature": 0,
-    }
-    if base.AI_REASONING_EFFORT:
-        body["reasoning_effort"] = base.AI_REASONING_EFFORT
-    req = urllib.request.Request(
-        f"{base.AI_BASE_URL}/chat/completions", data=json.dumps(body).encode(),
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {base.AI_API_KEY}",
-                 "User-Agent": "couch-check/2.0"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            data = json.load(resp)
-    except urllib.error.HTTPError as e:
-        if e.code == 429:
-            retry = e.headers.get("Retry-After")
-            seconds = float(retry) if retry and retry.replace(".", "", 1).isdigit() else 60
-            base.limiter.pause(seconds)
-            log.warning("AI rate limited; pausing AI scoring for %ds", seconds)
-        elif e.code in (401, 403):
-            base.limiter.pause(3600)
-            log.error("AI provider rejected the API key (HTTP %d)", e.code)
-        else:
-            log.warning("AI provider error HTTP %d; using the ISCCI keyword estimate", e.code)
+    answer = base._chat(SYSTEM + JSON_INSTRUCTION, f"Items:\n{numbered}")
+    if answer is None or not isinstance(answer[0], dict):
         return None
-    except (urllib.error.URLError, OSError, ValueError) as e:
-        log.warning("Could not reach AI provider (%s); using the ISCCI keyword estimate", e)
-        return None
-    try:
-        text = data["choices"][0]["message"]["content"] or ""
-        parsed = json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip()))
-        return _align(texts, parsed.get("items")), base._summary(parsed.get("summary"))
-    except (KeyError, IndexError, TypeError, ValueError, AttributeError):
-        log.warning("AI provider returned an unexpected response; using the ISCCI keyword estimate")
-        return None
+    parsed, model = answer
+    return _align(texts, parsed.get("items")), base._summary(parsed.get("summary")), model
 
 
 # The keyword estimate reuses production's matcher and moves its levels onto the ISCCI ladder.
