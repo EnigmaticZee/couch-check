@@ -8,6 +8,7 @@ COPY server.py .
 COPY pg/ pg/
 COPY data/ data/
 COPY static/ static/
+COPY experimental/ experimental/
 
 # The cache lives on a volume so it survives restarts. Settings and the optional AI key come from
 # the host's environment (never baked into the image).

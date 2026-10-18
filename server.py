@@ -30,6 +30,7 @@ _load_env_file(Path(__file__).parent / ".env")
 from pg import cinemeta, classify, pages, rubric, scores  # noqa: E402  (reads settings from the environment at import)
 from pg.service import Service, score
 from pg.store import Store
+from experimental import tv_description  # switched on with PG_EXPERIMENTAL; see experimental/
 
 PORT = int(os.environ.get("PORT", "7001"))
 PUBLIC_URL = os.environ.get("PG_PUBLIC_URL", "").rstrip("/")
@@ -304,7 +305,7 @@ class Handler(BaseHTTPRequestHandler):
         proto = self.headers.get("X-Forwarded-Proto") or ("http" if local else "https")
         return f"{proto}://{host}"
 
-    def send(self, status: int, body, content_type: str, cache: int = 0) -> None:
+    def send(self, status: int, body, content_type: str, cache: int = 0, headers: dict = None) -> None:
         data = body if isinstance(body, bytes) else body.encode()
         self.send_response(status)
         self.send_header("Content-Type", content_type)
@@ -312,12 +313,14 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Headers", "*")
         self.send_header("Cache-Control", f"max-age={min(cache, HTTP_CACHE_MAX)}" if cache else "no-cache")
+        for name, value in (headers or {}).items():
+            self.send_header(name, value)
         self.end_headers()
         if self.command != "HEAD":  # HEAD gets the same status and headers, without the body
             self.wfile.write(data)
 
-    def send_json(self, obj: dict, cache: int = 0) -> None:
-        self.send(200, json.dumps(obj, ensure_ascii=False), "application/json; charset=utf-8", cache)
+    def send_json(self, obj: dict, cache: int = 0, headers: dict = None) -> None:
+        self.send(200, json.dumps(obj, ensure_ascii=False), "application/json; charset=utf-8", cache, headers)
 
     def send_html(self, html: str, status: int = 200) -> None:
         self.send(status, html, "text/html; charset=utf-8")
@@ -369,7 +372,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(404, "Not found", "text/plain")
             chip = next(l["name"] for l in meta["links"] if l.get("category") == CHIP_CATEGORY)
             log.info("Meta %s %s -> %s", kind, imdb_id, chip)
-            return self.send_json({"meta": meta, "cacheMaxAge": max_age}, cache=max_age)
+            headers = None
+            if tv_description.is_on():  # the answer differs by device, so caches must keep them apart
+                meta = tv_description.apply(meta, chip, self.headers.get("User-Agent", ""))
+                headers = {"Vary": "User-Agent"}
+            return self.send_json({"meta": meta, "cacheMaxAge": max_age}, cache=max_age, headers=headers)
         if path.startswith("/stream/"):
             return self.send_json({"streams": []}, cache=86400)
         if path.startswith("/meta/"):
