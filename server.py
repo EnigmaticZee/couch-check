@@ -100,13 +100,13 @@ def stream_row(imdb_id: str, kind: str, base: str) -> tuple:
     if result.level is None:
         lines = ["No scene details on IMDb"]
     elif result.override:
-        lines = [f"{rubric.name(result.level)} · Your score", f"AI said {result.override['ai_shown']}"]
+        lines = [f"{rubric.name(result.level)} · Your Score", f"AI Said {result.override['ai_shown']}"]
     else:
-        lines = [f"{rubric.name(result.level)} · {'AI score' if source_label(entry) == 'AI' else 'Estimate'}"]
+        lines = [f"{rubric.name(result.level)} · {'AI Score' if source_label(entry) == 'AI' else 'Estimate'}"]
     if result.level is not None:
-        detail = f"{result.scenes} scene{'s' if result.scenes != 1 else ''}"
+        detail = f"{result.scenes} Scene{'s' if result.scenes != 1 else ''}"
         if result.prolonged:
-            detail += f" · {result.prolonged} prolonged"
+            detail += f" · {result.prolonged} Prolonged"
         lines.append(detail)
         if result.star:
             lines.append("* Non-Sexual Nudity")
@@ -114,12 +114,12 @@ def stream_row(imdb_id: str, kind: str, base: str) -> tuple:
         lines.append(f"⚠️ {rubric.warning_text(result)}")
     extras = []
     if kind == "series":
-        extras.append("Show-wide")
+        extras.append("Show-Wide")
     if result.low_confidence:
-        extras.append("Low confidence")
+        extras.append("Low Confidence")
     if extras:
         lines.append(" · ".join(extras))
-    lines.append("Tap: full list in browser ↗")
+    lines.append("Tap: Full List in Browser ↗")
     return {
         "name": f"{rubric.emoji(result.level)} {result.shown}",
         "description": "\n".join(lines),
@@ -143,11 +143,11 @@ def meta_with_score(imdb_id: str, kind: str, base: str) -> tuple:
         if result.level is None:
             label = "❔ No scene details"
         elif result.override:
-            label = f"{rubric.emoji(result.level)} {result.level}/10 · {rubric.name(result.level)} · Your score"
+            label = f"{rubric.emoji(result.level)} {result.level}/10 · {rubric.name(result.level)} · Your Score"
         else:
             label = f"{rubric.emoji(result.level)} {result.shown} · {rubric.name(result.level)}"
             if result.scenes:
-                label += f" · {result.scenes} scene{'s' if result.scenes != 1 else ''}"
+                label += f" · {result.scenes} Scene{'s' if result.scenes != 1 else ''}"
             label += f" · {source_label(entry)}"
             if result.warnings:
                 label += " · ⚠️"
@@ -238,7 +238,7 @@ def breakdown_meta(imdb_id: str, base: str) -> tuple:
         meta["description"] = "IMDb has no flagged Sex & Nudity items for this title yet."
     else:
         meta["releaseInfo"] = (f"{rubric.emoji(result.level)} {result.shown} · {rubric.name(result.level)} · "
-                               + ("Your score" if result.override else source_label(entry))
+                               + ("Your Score" if result.override else source_label(entry))
                                + (" · ⚠️" if result.warnings else ""))
         facts = [f"{result.scenes} scene{'s' if result.scenes != 1 else ''} at level {rubric.SCENE_THRESHOLD}+"]
         if result.prolonged:
@@ -288,7 +288,7 @@ def breakdown_rows(imdb_id: str, base: str) -> tuple:
     rows = [{"name": "📝\nIn short", "description": "\n".join(textwrap.wrap(summary, ROW_WIDTH)), "externalUrl": url}]
     if result.override:
         note = f"{result.override['note']}. " if result.override["note"] else ""
-        rows.append({"name": f"✋\nYour score", "externalUrl": url, "description": "\n".join(
+        rows.append({"name": f"✋\nYour Score", "externalUrl": url, "description": "\n".join(
             textwrap.wrap(f"{note}You set {result.level}/10; the AI said {result.override['ai_shown']}.", ROW_WIDTH))})
     elif why_text(result):
         rows.append({"name": f"🔎\nWhy {result.shown}", "externalUrl": url,
@@ -319,17 +319,17 @@ def level_rows(imdb_id: str, items: list) -> list:
     warned = [i for i in items if i.unscored]
     if warned:
         rows.append({"name": "⚠️\nWarning", "externalUrl": pages.imdb_url(imdb_id),
-                     "description": f"{len(warned)} item{'s' if len(warned) != 1 else ''}\nRead them on IMDb ↗"})
+                     "description": f"{len(warned)} Item{'s' if len(warned) != 1 else ''}\nRead Them on IMDb ↗"})
     for level in sorted({i.level for i in items if not i.unscored}, reverse=True):
         in_level = [i for i in items if i.level == level and not i.unscored]
         scenes = sum(1 for i in in_level if i.is_scene)
         prolonged = sum(1 for i in in_level if i.prolonged)
-        counts = f"{scenes} scene{'s' if scenes != 1 else ''}" if scenes else "General comments"
+        counts = f"{scenes} Scene{'s' if scenes != 1 else ''}" if scenes else "General Comments"
         if prolonged:
-            counts += f" · {prolonged} prolonged"
+            counts += f" · {prolonged} Prolonged"
         rows.append({
             "name": f"{rubric.emoji(level)} {level}\n{rubric.name(level)}",
-            "description": f"{counts}\nRead the scenes on IMDb ↗",
+            "description": f"{counts}\nRead the Scenes on IMDb ↗",
             "externalUrl": pages.imdb_url(imdb_id),
         })
     return rows

@@ -32,11 +32,11 @@ Couch Check reads each title's IMDb parents guide and turns its intimate-content
 | 🟢 2 | Romance |
 | 🟡 3 | Suggestive |
 | 🟡 4 | Implied |
-| 🟠 5 | Brief partial n*dity |
-| 🟠 6 | S*x scene, covered |
+| 🟠 5 | Brief Partial N*dity |
+| 🟠 6 | S*x Scene, Covered |
 | 🔴 7 | Topless |
-| 🟣 8 | S*x scene with n*dity |
-| 🟣 9 | Full frontal |
+| 🟣 8 | S*x Scene with N*dity |
+| 🟣 9 | Full Frontal |
 | 🟣 10 | Graphic |
 
 Next to the score you'll also see how many **scenes** are at level 4 or above, how many are **prolonged**, whether a show's score is **show-wide**, and **low confidence** when IMDb has very little to go on.

@@ -14,11 +14,11 @@ LADDER = [
     (2, "Romance", "Passionate or long kissing, making out fully clothed, couple lying in bed clothed."),
     (3, "Suggestive", "Sexual jokes and innuendo, sexual talk, revealing clothing (cleavage, lingerie, underwear including thongs, swimwear), camera lingering on bodies, nudity only in drawings or paintings."),
     (4, "Implied", "Undressing that cuts away, couple in bed under sheets afterwards, sounds from off-screen, nudity that is censored, blurred or strategically covered. Nothing actually visible."),
-    (5, "Brief partial nudity", "Bare buttocks, bare back or side views actually visible, usually in a non-sexual setting."),
-    (6, "Sex scene, covered", "Sex shown on screen with movement and sounds, but under sheets or clothed. No nudity."),
+    (5, "Brief Partial Nudity", "Bare buttocks, bare back or side views actually visible, usually in a non-sexual setting."),
+    (6, "Sex Scene, Covered", "Sex shown on screen with movement and sounds, but under sheets or clothed. No nudity."),
     (7, "Topless", "Bare female breasts visible, either outside a sex scene or briefly within one."),
-    (8, "Sex scene with nudity", "Sex on screen with breasts or buttocks visible, not graphic."),
-    (9, "Full frontal", "Genitals visible, male or female, in any setting."),
+    (8, "Sex Scene with Nudity", "Sex on screen with breasts or buttocks visible, not graphic."),
+    (9, "Full Frontal", "Genitals visible, male or female, in any setting."),
     (10, "Graphic", "Long or graphic sex, genitals in a sexual context, oral sex shown, near-pornographic."),
 ]
 
@@ -47,15 +47,15 @@ NONSEXUAL = {
     "medical": "Medical",
     "childbirth": "Childbirth",
     "breastfeeding": "Breastfeeding",
-    "bathing_child": "Bathing a child",
-    "changing_room": "Changing room",
+    "bathing_child": "Bathing a Child",
+    "changing_room": "Changing Room",
     "naturist": "Naturist",
-    "corpse": "Corpse or autopsy",
-    "art_model": "Art-class model",
-    "strip_search": "Strip search or prison",
-    "war_history": "War or historical",
-    "cultural": "Cultural documentary",
-    "scifi_horror": "Sci-fi or horror",
+    "corpse": "Corpse or Autopsy",
+    "art_model": "Art-Class Model",
+    "strip_search": "Strip Search or Prison",
+    "war_history": "War or Historical",
+    "cultural": "Cultural Documentary",
+    "scifi_horror": "Sci-Fi or Horror",
 }
 NONSEXUAL_CAP = 5
 
@@ -63,11 +63,11 @@ NONSEXUAL_CAP = 5
 # The first three are for items with nothing shown (level 0): shown in place of a level.
 # ANY_LEVEL ones can sit on a scored scene too, which keeps its level (rubric v5.2, warnings added later).
 WARNINGS = {
-    "assault": "Sexual assault",
-    "minor": "Involves a minor",
+    "assault": "Sexual Assault",
+    "minor": "Involves a Minor",
     "incest": "Incest",
     "exploitation": "Exploitation",
-    "violence_talk": "Sexual violence discussed",
+    "violence_talk": "Sexual Violence Discussed",
 }
 ANY_LEVEL = {"assault", "violence_talk"}
 WARNING_RULE = (

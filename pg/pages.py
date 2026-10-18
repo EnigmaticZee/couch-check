@@ -168,20 +168,20 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
         hero_name, hero_desc = rubric.name(lvl), rubric.meaning(lvl)
 
     if result.override:
-        pills = ['<span class="pill accent">Your score</span>',
-                 f'<span class="pill">AI said {escape(result.override["ai_shown"])}</span>']
+        pills = ['<span class="pill accent">Your Score</span>',
+                 f'<span class="pill">AI Said {escape(result.override["ai_shown"])}</span>']
     else:
-        pills = ['<span class="pill accent">' + ("AI score" if classify.is_ai(entry["classifier"]) else "Keyword estimate") + "</span>"]
+        pills = ['<span class="pill accent">' + ("AI Score" if classify.is_ai(entry["classifier"]) else "Keyword Estimate") + "</span>"]
     if result.star:
         pills.append('<span class="pill">* Non-Sexual Nudity</span>')
     if lvl is not None:
-        pills.append(f'<span class="pill">{result.scenes} scene{"s" if result.scenes != 1 else ""} at level {rubric.SCENE_THRESHOLD}+</span>')
+        pills.append(f'<span class="pill">{result.scenes} Scene{"s" if result.scenes != 1 else ""} at Level {rubric.SCENE_THRESHOLD}+</span>')
         if result.prolonged:
-            pills.append(f'<span class="pill">{result.prolonged} prolonged</span>')
+            pills.append(f'<span class="pill">{result.prolonged} Prolonged</span>')
     if is_series:
-        pills.append('<span class="pill">Show-wide</span>')
+        pills.append('<span class="pill">Show-Wide</span>')
     if result.low_confidence:
-        pills.append('<span class="pill">Low confidence</span>')
+        pills.append('<span class="pill">Low Confidence</span>')
 
     art = f'<div class="bgimg" style="background-image:url(\'{escape(background)}\')"></div>' if background else ""
     hero = f"""<div class="card hero{" art" if background else ""}">{art}<div class="inner">
@@ -192,7 +192,7 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
 
     def item_html(i: rubric.ScoredItem) -> str:
         tags = [t for t, on in ((f"⚠️ {rubric.WARNINGS.get(i.warning, '')}", bool(i.warning) and not i.unscored),
-                                ("prolonged", i.prolonged), ("overview", not i.is_scene), ("spoiler", i.is_spoiler)) if on]
+                                ("Prolonged", i.prolonged), ("Overview", not i.is_scene), ("Spoiler", i.is_spoiler)) if on]
         tag_html = f'<div class="tags">{"".join(f"<span class=tag>{t}</span>" for t in tags)}</div>' if tags else ""
         text = escape(i.text)
         if i.is_spoiler:
@@ -216,13 +216,13 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
             in_level = [i for i in scored if i.level == level]
             scenes = sum(1 for i in in_level if i.is_scene)
             prolonged = sum(1 for i in in_level if i.prolonged)
-            count = f"{scenes} scene{'s' if scenes != 1 else ''}" if scenes else "general comments"
-            extra = f" · {prolonged} prolonged" if prolonged else ""
+            count = f"{scenes} Scene{'s' if scenes != 1 else ''}" if scenes else "General Comments"
+            extra = f" · {prolonged} Prolonged" if prolonged else ""
             lines.append(f'<li><span class="chip lv-{color(level)}">{level}</span><div><b>{escape(rubric.name(level))}</b>'
                          f'<br><span class="muted">{count}{extra}</span></div></li>')
         items_html = (f'<div class="card"><h3>Flagged content · {len(items)}</h3><ul class="items">{"".join(lines)}</ul>'
                       f'<p class="muted" style="margin:14px 0 0">The scene descriptions are written by IMDb\'s contributors. '
-                      f'<a href="{escape(imdb_url(imdb_id))}">Read them on IMDb ↗</a></p></div>')
+                      f'<a href="{escape(imdb_url(imdb_id))}">Read Them on IMDb ↗</a></p></div>')
     elif items:
         groups = []
         if warned:
@@ -291,7 +291,7 @@ def _why(result: rubric.Result, show_text: bool) -> str:
     """The item that set the level, or the owner's own score."""
     if result.override:
         note = f" {escape(result.override['note'])}." if result.override["note"] else ""
-        return (f'<div class="card yours"><h3>Your score</h3><p style="margin:0">You set this title to '
+        return (f'<div class="card yours"><h3>Your Score</h3><p style="margin:0">You set this title to '
                 f'<b>{result.level}/10</b>.{note} The AI scored it {escape(result.override["ai_shown"])}.</p></div>')
     top = result.top
     if top is None or result.level is None:
@@ -359,11 +359,11 @@ sex and nudity, with every flagged scene listed.</p></div></div>
 <div class="card notice"><b>Beta.</b> The scoring rubric is still being tuned, so a score can occasionally be off.
 Every score links to the scene-by-scene list it came from, so you can always check.</div>
 <div class="card"><h3>How it looks in Stremio</h3><div class="preview">
-<div class="mock"><div class="label">Couch Check</div><span class="chipx">🟡 4/10 · Implied · 5 scenes · AI</span>
+<div class="mock"><div class="label">Couch Check</div><span class="chipx">🟡 4/10 · Implied · 5 Scenes · AI</span>
 <div class="cap">On the title's main screen. Tap it for the scene-by-scene breakdown.</div></div>
-<div class="mock"><div class="row"><b>🟡 4/10</b><div>Implied · AI score
-5 scenes
-Tap: full list in browser ↗</div></div><div class="cap">In every episode's and movie's stream list.</div></div>
+<div class="mock"><div class="row"><b>🟡 4/10</b><div>Implied · AI Score
+5 Scenes
+Tap: Full List in Browser ↗</div></div><div class="cap">In every episode's and movie's stream list.</div></div>
 </div></div>
 <div class="card"><h3>Install</h3>
 <label class="toggle"><input type="checkbox" id="ai"{" checked" if ai_on else ""}><span class="switch"></span>
