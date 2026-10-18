@@ -200,7 +200,7 @@ def _annotate_episodes(show_id: str, meta: dict, rubrics) -> Tuple[dict, bool]:
             v = {**v, "name": f"{v.get('name') or v.get('title') or ''} · {marks[-1]}"}
             for field in ("overview", "description"):
                 if v.get(field) or field == "overview":
-                    v[field] = f"{line}\n\n{v.get(field) or ''}".strip()
+                    v[field] = f"{line} ||\n\n{v.get(field)}" if v.get(field) else line
         videos.append(v)
     return {**meta, "videos": videos}, pending
 
