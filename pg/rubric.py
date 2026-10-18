@@ -59,20 +59,32 @@ NONSEXUAL = {
 }
 NONSEXUAL_CAP = 5
 
-# Serious themes that can't be scored because nothing is shown (the item would be level 0).
-# They're shown as a warning in place of the score and never count toward the title's level.
-# Anything actually shown on screen is scored on the ladder as usual instead.
+# Serious themes flagged next to the score; they never change it.
+# The first three are for items with nothing shown (level 0): shown in place of a level.
+# ANY_LEVEL ones can sit on a scored scene too, which keeps its level (rubric v5.2, warnings added later).
 WARNINGS = {
+    "assault": "Sexual assault",
     "minor": "Involves a minor",
     "incest": "Incest",
     "exploitation": "Exploitation",
+    "violence_talk": "Sexual violence discussed",
 }
+ANY_LEVEL = {"assault", "violence_talk"}
 WARNING_RULE = (
-    "warning: only for items at level 0. If such an item still involves one of these serious themes, "
-    "talked about or part of the story but not shown, set warning to its key: "
-    "\"minor\" (romantic or sexual involvement of someone under 18), \"incest\" (between family members), "
-    "\"exploitation\" (trafficking, coercion or forced sex work). Otherwise, and for every item above level 0, use null."
+    "warning: a key when the item involves one of these serious themes, otherwise null. "
+    "\"assault\": sexual assault or abuse shown or clearly happening on screen, at any level (still give its level by what is shown). "
+    "\"violence_talk\": sexual violence or abuse discussed at length or as a story topic, at any level. "
+    "Only for items at level 0 (talked about or part of the story, not shown): \"minor\" (romantic or sexual involvement of "
+    "someone under 18), \"incest\" (between family members), \"exploitation\" (trafficking, coercion or forced sex work). "
+    "One key per item; if several fit, use the first in this order: assault, minor, exploitation, incest, violence_talk."
 )
+
+
+def allowed_warning(key, level: int):
+    """The warning key if it may sit on an item at this level, else None."""
+    if key in WARNINGS and (level == 0 or key in ANY_LEVEL):
+        return key
+    return None
 
 # Scenes at or above this level count toward the "N scenes" frequency.
 SCENE_THRESHOLD = 4
@@ -99,7 +111,9 @@ def emoji(level: Optional[int]) -> str:
         return "🟡"
     if level <= 6:
         return "🟠"
-    return "🔴"
+    if level <= 7:
+        return "🔴"
+    return "🟣"  # 8–10: the most explicit titles stand apart from topless (7)
 
 
 @dataclass
@@ -112,6 +126,11 @@ class ScoredItem:
     warning: Optional[str] = None  # a WARNINGS key, only on level-0 items
     nonsexual: Optional[str] = None  # a NONSEXUAL key: non-sexual nudity, capped and marked *
     shown: str = ""  # the AI's short note of what is actually visible or heard
+
+    @property
+    def unscored(self) -> bool:
+        """A warning item with nothing shown: listed as a warning instead of a level."""
+        return bool(self.warning) and self.level == 0
 
 
 @dataclass

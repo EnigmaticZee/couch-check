@@ -205,7 +205,7 @@ def _align(texts: List[str], entries: list, about: str = "") -> List[dict]:
         if not e:
             out.append(_with_keywords(t))
             continue
-        out.append(_genre_nonsexual(t, _vague_cap(t, _clean(e)), about))
+        out.append(_warning_guard(t, _genre_nonsexual(t, _vague_cap(t, _clean(e)), about)))
     return out
 
 
@@ -226,6 +226,23 @@ _SEX = re.compile(r"\bsex\b|sex scene|having sex|intercourse", re.I)
 _SCIFI_HORROR = re.compile(r"\b(Sci-Fi|Horror)\b")
 _SEXUAL_SCENE = re.compile(r"\bsex|intercourse|love scene|making love|make love|seduc|strip|lap dance|kiss|"
                            r"in bed|aroused|erotic|romantic|lover", re.I)
+
+
+_DISCUSSED = re.compile(r"\b(discuss\w*|discussion|talk\w*|mention\w*|references?|dialogue|story about)\b", re.I)
+_DEPICTED = re.compile(r"\b(shown|depicted|seen|on screen|scene)\b", re.I)
+_SURE_WARNINGS = {"assault", "incest"}  # keyword matches precise enough to add when the AI misses them
+
+
+def _warning_guard(text: str, c: dict) -> dict:
+    """Warnings the AI can get wrong: discussion is "discussed", not assault; plain mentions of assault or incest
+    get their warning even if the AI left it out."""
+    if c.get("warning") == "assault" and _DISCUSSED.search(text) and not _DEPICTED.search(text):
+        return {**c, "warning": "violence_talk"}
+    if not c.get("warning"):
+        found = next((w for w, pattern in _WARNINGS if w in _SURE_WARNINGS and pattern.search(text)), None)
+        if found and rubric.allowed_warning(found, c["level"]):
+            return {**c, "warning": found}
+    return c
 
 
 def _genre_nonsexual(text: str, c: dict, about: str) -> dict:
@@ -259,8 +276,7 @@ def _clean(e: dict) -> dict:
     nonsexual = e.get("nonsexual") if e.get("nonsexual") in rubric.NONSEXUAL and level > 0 else None
     if nonsexual:
         level = min(level, rubric.NONSEXUAL_CAP)
-    # Warnings are only for unscorable (level-0) items; anything shown is scored instead.
-    warning = e.get("warning") if level == 0 and e.get("warning") in rubric.WARNINGS else None
+    warning = rubric.allowed_warning(e.get("warning"), level)
     shown = " ".join(str(e.get("shown") or "").split())[:120]
     return {"level": level, "is_scene": bool(e.get("is_scene", True)), "prolonged": bool(e.get("prolonged")),
             "warning": warning, "nonsexual": nonsexual, "shown": shown}
@@ -284,7 +300,8 @@ def _recheck_top(texts: List[str], classified: List[dict], about: str = "") -> L
         "shown": answer.get("shown") or classified[i].get("shown")})), about)
     if fixed["level"] != top_level:
         log.info("Re-check moved an item from %d to %d", top_level, fixed["level"])
-    return classified[:i] + [{**fixed, "warning": classified[i].get("warning") if fixed["level"] == 0 else None}] + classified[i + 1:]
+    fixed["warning"] = rubric.allowed_warning(classified[i].get("warning"), fixed["level"])
+    return classified[:i] + [fixed] + classified[i + 1:]
 
 
 def _with_openai(texts: List[str], about: str = "") -> Optional[Tuple[List[dict], Optional[str], str]]:
@@ -408,11 +425,14 @@ _ARTWORK = re.compile(r"\b(drawings?|sketch(es)?|paintings?|portraits?|posters?|
 _PROLONGED = re.compile(r"prolonged|lengthy|long|extended|lingering|several (minutes|seconds)", re.I)
 # Rough keyword checks for the warning themes (rubric.WARNINGS), used for estimates only.
 _WARNINGS = [
+    ("assault", re.compile(r"\b(rape[sd]?|raping|sexual(ly)? assault\w*|molest\w*|sexually abus\w*)\b", re.I)),
     ("minor", re.compile(r"(under-?age|minor|\b1[0-7]-year-old|\bteen(age|ager)?s?\b|child|student).{0,80}"
                          r"(sexual|relationship|affair|romance|romantic|seduc|groom)|(sexual|relationship|affair|romance|"
                          r"romantic|seduc|groom).{0,80}(under-?age|minor|\b1[0-7]-year-old|\bteen(age|ager)?s?\b|child|student)", re.I)),
     ("incest", re.compile(r"\bincest", re.I)),
     ("exploitation", re.compile(r"traffick|forced (into )?(prostitution|sex work)|sex slave|coerced into sex", re.I)),
+    ("violence_talk", re.compile(r"(discuss\w*|talk\w*|mention\w*|references?).{0,40}(sex(ual)? (abuse|violence))|"
+                                 r"(sex(ual)? (abuse|violence)).{0,40}(discuss\w*|talk\w*|mention\w*)", re.I)),
 ]
 _OVERVIEW = re.compile(r"^(overall|in general|generally|mostly|throughout|this (film|movie|show|series))", re.I)
 
@@ -443,6 +463,6 @@ def _with_keywords(text: str) -> dict:
         nonsexual = next((k for k, pattern in _NONSEXUAL if re.search(pattern, text, re.I)), None)
         if nonsexual:
             level = rubric.NONSEXUAL_CAP
-    warning = next((w for w, pattern in _WARNINGS if pattern.search(text)), None) if level == 0 else None
+    warning = next((w for w, pattern in _WARNINGS if pattern.search(text) and rubric.allowed_warning(w, level)), None)
     return {"level": level, "is_scene": not _OVERVIEW.search(text.strip()), "prolonged": bool(_PROLONGED.search(text)),
             "warning": warning, "nonsexual": nonsexual, "shown": ""}

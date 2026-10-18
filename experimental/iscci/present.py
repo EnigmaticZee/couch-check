@@ -128,9 +128,6 @@ padding:3px 10px;color:#fff;margin-right:6px}
 .grid .h{background:none}.grid .on{color:#fff;font-weight:800}
 .grid .on.lv-green{background:var(--green)}.grid .on.lv-yellow{background:var(--yellow)}.grid .on.lv-orange{background:var(--orange)}
 .grid .on.lv-red{background:var(--red)}.grid .on.lv-purple{background:#8b3fb8}
-.strip{display:flex;gap:4px;align-items:flex-end;height:70px;margin:8px 0 4px}
-.strip span{flex:1;border-radius:4px 4px 0 0;min-width:4px}
-.strip span.ns{opacity:.45;outline:2px dashed #2f7fb8}
 .nsbox{background:rgba(47,127,184,.12);color:#2f7fb8;border-radius:10px;padding:8px 10px;font-size:.88rem;margin-top:6px}
 @media (prefers-color-scheme:dark){.nsbox{color:#6fb3e6}}
 .exp{border-color:#8b3fb8}
@@ -187,14 +184,6 @@ def page(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubric.Sc
                 f'<p class="muted" style="margin:10px 0 0">Peak {result.peak} + {result.extra} extra = '
                 f'{result.peak + result.extra}. Extra points: frequent +1, prolonged +1, pervasive +2, at most +2.</p></div>')
 
-    strip = ""
-    if items:
-        bars = "".join(
-            f'<span class="lv-{rubric.colour(i.level)}{" ns" if i.nonsexual else ""}" style="height:{max(8, i.level * 10)}%"'
-            f' title="{i.level} · {escape(i.tag)}"></span>' for i in items if not i.warning)
-        strip = (f'<div class="card"><h3>Scene strip</h3><div class="strip">{bars}</div>'
-                 f'<p class="muted" style="margin:0">One bar per IMDb item, in IMDb\'s order. Dashed bars are non-sexual (*).</p></div>')
-
     def item_html(i: rubric.ScoredItem) -> str:
         if i.warning:
             chip_html = f'<span class="chip lv-warn">⚠️</span>'
@@ -225,7 +214,7 @@ def page(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubric.Sc
     ladder_html = (f'<div class="card"><details class="ladder"><summary>What the ISCCI levels mean</summary><table>{ladder}</table>'
                    f'<p style="margin:16px 0 4px"><b>Rules</b></p><ul class="rules">{rules}</ul></details></div>')
     v51 = f"/guide/{imdb_id}" + ("?series=1" if is_series else "")
-    body = (f'{hero}{summary_html}{grid}{strip}{items_html}{ladder_html}'
+    body = (f'{hero}{summary_html}{grid}{items_html}{ladder_html}'
             f'<div class="card exp"><p style="margin:0">{escape(rubric.NOTICE)} <a href="{escape(v51)}">See the main score</a>.</p></div>'
             f'<p class="foot">Scene descriptions from IMDb\'s parents guide. Levels by Couch Check (ISCCI).</p>')
     return pages._doc(f"{guide['title']} · ISCCI · Couch Check", body, extra_css=pages.HERO_CSS + PAGE_CSS)

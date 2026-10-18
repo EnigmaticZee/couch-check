@@ -109,7 +109,7 @@ def stream_row(imdb_id: str, kind: str, base: str) -> tuple:
             detail += f" · {result.prolonged} prolonged"
         lines.append(detail)
         if result.star:
-            lines.append("* non-sexual nudity")
+            lines.append("* Non-Sexual Nudity")
     if result.warnings:
         lines.append(f"⚠️ {rubric.warning_text(result)}")
     extras = []
@@ -188,7 +188,7 @@ def why_text(result: rubric.Result) -> str:
         return ""
     text = top.shown or (top.text if SCENE_TEXT else "")
     if top.nonsexual and text:
-        text += f" (non-sexual: {rubric.NONSEXUAL[top.nonsexual].lower()})"
+        text += f" (Non-Sexual: {rubric.NONSEXUAL[top.nonsexual]})"
     return text
 
 
@@ -250,7 +250,7 @@ def breakdown_meta(imdb_id: str, base: str) -> tuple:
         facts.append("scored by AI" if source_label(entry) == "AI"
                      else "keyword estimate" + ("" if ai_wanted() else " (AI scores turned off)"))
         summary = entry.get("summary") if classify.is_ai(entry["classifier"]) else None
-        warning = (f"⚠️ Content warning: {rubric.warning_text(result)} (part of the story, not shown, so it isn't scored). "
+        warning = (f"⚠️ Content warning: {rubric.warning_text(result)} (flagged for awareness; it doesn't change the score). "
                    if result.warnings else "")
         why = why_text(result)
         why = f"Score set by: {why}. " if why and not result.override else ""
@@ -295,16 +295,17 @@ def breakdown_rows(imdb_id: str, base: str) -> tuple:
                      "description": "\n".join(textwrap.wrap(f"Score set by: {why_text(result)}", ROW_WIDTH))})
     if result.warnings:
         rows.append({"name": "⚠️\nWarning", "externalUrl": url, "description": "\n".join(
-            textwrap.wrap(f"{rubric.warning_text(result)}: part of the story, not shown, so it isn't scored.", ROW_WIDTH))})
+            textwrap.wrap(f"{rubric.warning_text(result)}: flagged for awareness; it doesn't change the score.", ROW_WIDTH))})
     if not SCENE_TEXT:
         return rows + level_rows(imdb_id, items), 3600
     # Warning items first (they're level 0, so they'd otherwise sink to the bottom).
-    for i in sorted(items, key=lambda i: (not i.warning, -i.level, not i.is_scene)):
-        tags = [t for t, on in ((f"Non-sexual: {rubric.NONSEXUAL.get(i.nonsexual, '')}", bool(i.nonsexual)),
+    for i in sorted(items, key=lambda i: (not i.unscored, -i.level, not i.is_scene)):
+        tags = [t for t, on in ((f"⚠️ {rubric.WARNINGS.get(i.warning, '')}", bool(i.warning) and not i.unscored),
+                                (f"Non-Sexual: {rubric.NONSEXUAL.get(i.nonsexual, '')}", bool(i.nonsexual)),
                                 ("Prolonged", i.prolonged), ("Overview", not i.is_scene), ("Spoiler", i.is_spoiler)) if on]
         star = "*" if i.nonsexual else ""
         rows.append({
-            "name": f"⚠️\nWarning" if i.warning else f"{rubric.emoji(i.level)} {i.level}{star}\n{rubric.name(i.level)}",
+            "name": f"⚠️\nWarning" if i.unscored else f"{rubric.emoji(i.level)} {i.level}{star}\n{rubric.name(i.level)}",
             # Stremio cuts each line of a row short, so wrap the text over several lines.
             "description": "\n".join(textwrap.wrap(i.text, ROW_WIDTH) + ([" · ".join(tags)] if tags else [])),
             "externalUrl": url,
@@ -315,12 +316,12 @@ def breakdown_rows(imdb_id: str, base: str) -> tuple:
 def level_rows(imdb_id: str, items: list) -> list:
     """One row per level with its scene count, linking to IMDb for the descriptions (PG_SCENE_TEXT=off)."""
     rows = []
-    warned = [i for i in items if i.warning]
+    warned = [i for i in items if i.unscored]
     if warned:
         rows.append({"name": "⚠️\nWarning", "externalUrl": pages.imdb_url(imdb_id),
                      "description": f"{len(warned)} item{'s' if len(warned) != 1 else ''}\nRead them on IMDb ↗"})
-    for level in sorted({i.level for i in items if not i.warning}, reverse=True):
-        in_level = [i for i in items if i.level == level and not i.warning]
+    for level in sorted({i.level for i in items if not i.unscored}, reverse=True):
+        in_level = [i for i in items if i.level == level and not i.unscored]
         scenes = sum(1 for i in in_level if i.is_scene)
         prolonged = sum(1 for i in in_level if i.prolonged)
         counts = f"{scenes} scene{'s' if scenes != 1 else ''}" if scenes else "General comments"

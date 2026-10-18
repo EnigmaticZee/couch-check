@@ -10,12 +10,12 @@ from . import classify, rubric
 
 CSS = """
 :root{--bg:#f5f3fa;--card:#fff;--text:#1c1830;--muted:#6a6580;--line:#e6e2f0;--accent:#5b3ba8;--accent-soft:#eee8fb;
---cream:#f6cf98;--green:#2f9a5a;--yellow:#b88a00;--orange:#d0661c;--red:#c43b3b;--grey:#8a8698}
+--cream:#f6cf98;--green:#2f9a5a;--yellow:#b88a00;--orange:#d0661c;--red:#c43b3b;--purple:#8b3fb8;--grey:#8a8698}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141122;--card:#1d1930;--text:#eeebf7;
 --muted:#a6a0bd;--line:#2f2a47;--accent:#a58bff;--accent-soft:#2a2347;--green:#46b874;--yellow:#e0b232;
---orange:#ef8c48;--red:#ee6a6a;--grey:#8e89a3}}
+--orange:#ef8c48;--red:#ee6a6a;--purple:#b77be0;--grey:#8e89a3}}
 :root[data-theme="dark"]{--bg:#141122;--card:#1d1930;--text:#eeebf7;--muted:#a6a0bd;--line:#2f2a47;--accent:#a58bff;
---accent-soft:#2a2347;--green:#46b874;--yellow:#e0b232;--orange:#ef8c48;--red:#ee6a6a;--grey:#8e89a3}
+--accent-soft:#2a2347;--green:#46b874;--yellow:#e0b232;--orange:#ef8c48;--red:#ee6a6a;--purple:#b77be0;--grey:#8e89a3}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
 -webkit-font-smoothing:antialiased}
@@ -30,7 +30,7 @@ h3{font-size:.8rem;margin:0 0 12px;text-transform:uppercase;letter-spacing:.08em
 .sub{color:var(--muted);margin:4px 0 0;font-size:.95rem}
 .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;margin-bottom:16px}
 .lv-green{background:var(--green)}.lv-yellow{background:var(--yellow)}.lv-orange{background:var(--orange)}
-.lv-red{background:var(--red)}.lv-grey{background:var(--grey)}
+.lv-red{background:var(--red)}.lv-purple{background:var(--purple)}.lv-grey{background:var(--grey)}
 .chip{flex:none;width:34px;height:34px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;
 font-weight:700;color:#fff;font-size:.95rem}
 .pills{display:flex;flex-wrap:wrap;gap:8px}
@@ -74,7 +74,7 @@ color:var(--accent);font-weight:600;text-decoration:none;font-size:.92rem}
 def color(level: Optional[int]) -> str:
     if level is None:
         return "grey"
-    return {"🟢": "green", "🟡": "yellow", "🟠": "orange", "🔴": "red"}[rubric.emoji(level)]
+    return {"🟢": "green", "🟡": "yellow", "🟠": "orange", "🔴": "red", "🟣": "purple"}[rubric.emoji(level)]
 
 
 def _doc(title: str, body: str, refresh: bool = False, extra_css: str = "") -> str:
@@ -150,9 +150,6 @@ font-size:2.2rem;font-weight:800;color:#fff}
 .summary p{margin:0;font-size:1.05rem;line-height:1.6}
 .summary p.src{margin-top:10px;font-size:.78rem;color:var(--muted)}
 .why{display:flex;gap:14px;align-items:flex-start}.why p{margin:0}
-.strip{display:flex;gap:4px;align-items:flex-end;height:64px;margin:4px 0 8px}
-.strip span{flex:1;border-radius:4px 4px 0 0;min-width:4px}
-.strip span.ns{opacity:.5;outline:2px dashed #2f7fb8;outline-offset:-2px}
 .nsbox{background:rgba(47,127,184,.12);color:#2f7fb8;border-radius:10px;padding:8px 10px;font-size:.88rem;margin-top:6px}
 .yours{border-color:var(--accent)}
 @media (prefers-color-scheme:dark){.nsbox{color:#6fb3e6}}
@@ -176,7 +173,7 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
     else:
         pills = ['<span class="pill accent">' + ("AI score" if classify.is_ai(entry["classifier"]) else "Keyword estimate") + "</span>"]
     if result.star:
-        pills.append('<span class="pill">* non-sexual nudity</span>')
+        pills.append('<span class="pill">* Non-Sexual Nudity</span>')
     if lvl is not None:
         pills.append(f'<span class="pill">{result.scenes} scene{"s" if result.scenes != 1 else ""} at level {rubric.SCENE_THRESHOLD}+</span>')
         if result.prolonged:
@@ -194,20 +191,21 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
 {_scale(lvl) if lvl is not None else ""}<div class="pills" style="margin-top:16px">{"".join(pills)}</div></div></div>"""
 
     def item_html(i: rubric.ScoredItem) -> str:
-        tags = [t for t, on in (("prolonged", i.prolonged), ("overview", not i.is_scene), ("spoiler", i.is_spoiler)) if on]
+        tags = [t for t, on in ((f"⚠️ {rubric.WARNINGS.get(i.warning, '')}", bool(i.warning) and not i.unscored),
+                                ("prolonged", i.prolonged), ("overview", not i.is_scene), ("spoiler", i.is_spoiler)) if on]
         tag_html = f'<div class="tags">{"".join(f"<span class=tag>{t}</span>" for t in tags)}</div>' if tags else ""
         text = escape(i.text)
         if i.is_spoiler:
             text = f'<details class="spoiler"><summary>Spoiler: tap to show</summary>{text}</details>'
-        if i.warning:
+        if i.unscored:
             chip = f'<span class="chip lv-warn" title="{escape(rubric.WARNINGS[i.warning])}">⚠️</span>'
         else:
             chip = (f'<span class="chip lv-{color(i.level)}" title="{escape(rubric.name(i.level))}">'
                     f'{i.level}{"*" if i.nonsexual else ""}</span>')
         return f"<li>{chip}<div>{text}{_nonsexual_box(i)}{tag_html}</div></li>"
 
-    warned = [i for i in items if i.warning]
-    scored = [i for i in items if not i.warning]
+    warned = [i for i in items if i.unscored]
+    scored = [i for i in items if not i.unscored]
 
     if items and not show_text:
         lines = []
@@ -258,8 +256,8 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
 <p class="src">{source}</p></div>"""
     if result.warnings:
         summary_html = f"""<div class="card warning"><h3>⚠️ Content warning</h3><p><b>{escape(rubric.warning_text(result))}</b>.
-It's part of the story but not shown, so it isn't scored. The items are listed first below.</p></div>""" + summary_html
-    summary_html += _why(result, show_text) + _strip(items)
+It's flagged for awareness and doesn't change the score. The items are marked below.</p></div>""" + summary_html
+    summary_html += _why(result, show_text)
     title_link = f"stremio:///detail/{'series' if is_series else 'movie'}/{imdb_id}"
     back = f"""<a class="back" id="back" href="{escape(title_link)}">← Back to Stremio</a>
 <script>
@@ -285,7 +283,7 @@ document.getElementById("back").addEventListener("click", function (e) {{
 def _nonsexual_box(i: rubric.ScoredItem) -> str:
     if not i.nonsexual:
         return ""
-    return (f'<div class="nsbox">ℹ️ <b>Non-sexual · {escape(rubric.NONSEXUAL[i.nonsexual])}.</b> '
+    return (f'<div class="nsbox">ℹ️ <b>* Non-Sexual Nudity · {escape(rubric.NONSEXUAL[i.nonsexual])}.</b> '
             f'Counted at {rubric.NONSEXUAL_CAP} at most and marked *.</div>')
 
 
@@ -308,17 +306,6 @@ def _why(result: rubric.Result, show_text: bool) -> str:
     return (f'<div class="card"><h3>Why {escape(result.shown)}</h3><div class="why">'
             f'<span class="chip lv-{color(top.level)}">{top.level}{"*" if top.nonsexual else ""}</span>'
             f'<div><p>{detail}</p>{shown}{_nonsexual_box(top)}</div></div></div>')
-
-
-def _strip(items: List[rubric.ScoredItem]) -> str:
-    """One bar per item, in IMDb's order: a one-off spike or a pattern."""
-    scored = [i for i in items if not i.warning]
-    if len(scored) < 2:
-        return ""
-    bars = "".join(f'<span class="lv-{color(i.level)}{" ns" if i.nonsexual else ""}" style="height:{max(8, i.level * 10)}%"'
-                   f' title="{i.level} · {escape(rubric.name(i.level))}"></span>' for i in scored)
-    return (f'<div class="card"><h3>Scene strip</h3><div class="strip">{bars}</div>'
-            f'<p class="muted" style="margin:0">One bar per IMDb item, in IMDb\'s order. Dashed bars are non-sexual (*).</p></div>')
 
 
 CONFIGURE_CSS = """
