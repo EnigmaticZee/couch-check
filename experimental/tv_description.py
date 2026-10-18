@@ -34,14 +34,13 @@ def apply(meta: dict, chips: Union[str, List[str]], user_agent: str) -> dict:
     description = (meta.get("description") or "").strip()
     meta = {**meta, "description": f"{line}\n\n{description}" if description else line}
     # With an episode selected, the TV shows that episode's summary instead, so each one gets the line too:
-    # its own score if episode scores already added one, otherwise the show-wide score.
+    # its own score if episode scores already added one, otherwise the show's score.
     if meta.get("videos"):
-        show_line = "Couch Check (show-wide): " + " | ".join(chips)
         videos = []
         for v in meta["videos"]:
             summary = (v.get("overview") or v.get("description") or "").strip()
             if not summary.startswith("Couch Check"):
-                summary = f"{show_line}\n\n{summary}" if summary else show_line
+                summary = f"{line}\n\n{summary}" if summary else line
             videos.append({**v, "overview": summary, "description": summary})
         meta["videos"] = videos
     return meta
