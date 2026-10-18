@@ -27,9 +27,6 @@ log = logging.getLogger("pg.classify")
 AI_BASE_URL = os.environ.get("PG_AI_BASE_URL", "").rstrip("/")
 AI_API_KEY = os.environ.get("PG_AI_API_KEY", "")
 AI_MODEL = os.environ.get("PG_AI_MODEL", "")
-# Reasoning models (e.g. gpt-oss) think before answering, and that counts against token limits;
-# light thinking is plenty for placing items on the ladder.
-AI_REASONING_EFFORT = os.environ.get("PG_AI_REASONING_EFFORT") or ("low" if "gpt-oss" in AI_MODEL else "")
 # Backups for when the main key or model hits its limit (e.g. Groq's tokens per day).
 AI_FALLBACK_KEY = os.environ.get("PG_AI_FALLBACK_KEY", "")
 AI_FALLBACK_MODEL = os.environ.get("PG_AI_FALLBACK_MODEL", "")
@@ -43,6 +40,8 @@ class Route:
         self.paused_until = 0.0
 
     def reasoning_effort(self) -> str:
+        # Reasoning models (e.g. gpt-oss) think before answering, and that counts against token limits;
+        # light thinking is plenty for placing items on the ladder.
         return os.environ.get("PG_AI_REASONING_EFFORT") or ("low" if "gpt-oss" in self.model else "")
 
 

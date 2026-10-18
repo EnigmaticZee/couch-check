@@ -19,6 +19,14 @@
    "pg0065500": [5, 1, 0, null, "scifi_horror", "nudity with no sexual framing, in a sci-fi or horror title"],
    "pg0065501": [1, 1, 0, null, null, "incest theme"]
   }},
+  "tt0115167": {"title": "Everybody Loves Raymond", "scored": "2026-10-18", "summary": "The series includes occasional discussion of breast implants and frequent sexual references, but no explicit nudity or sex is shown. Most sexual content is limited to dialogue and implied activity such as couples giggling under the sheets. Overall, the show stays at a talk level with no visible nudity.", "items": {
+   "pg0751845": [1, 1, 0, null, null, "discussion of breast implants, no nudity"],
+   "pg1828701": [1, 0, 0, null, null, "sex references spoken"],
+   "pg0077306": [1, 0, 0, null, null, "couples under sheets giggling, no nudity, sexual discussion"]
+  }},
+  "tt0120902": {"title": "The X Files", "scored": "2026-10-18", "summary": "The scene involves dialogue about alleged child pornography and sexual battery, with no visual sexual content. The conversation is brief and limited to talk about the allegations. No nudity or explicit scenes are shown.", "items": {
+   "pg0085967": [1, 1, 0, null, null, "only talk about alleged child porn and sexual battery"]
+  }},
   "tt0386676": {"title": "The Office", "scored": "2026-10-18", "summary": "The series contains occasional brief topless female breast shots and several scenes of censored nudity, such as blurred genitals or covered bodies. Most of the sexual content is limited to jokes, innuendo, suggestive clothing and implied sex, with only a few brief on‑screen kisses or a single covered sex scene. The remainder is largely comedic dialogue and non‑sexual situations.", "items": {
    "pg0649406": [3, 0, 0, null, null, "sexual jokes"],
    "pg0703178": [7, 1, 0, null, null, "female breast shown slightly"],
@@ -66,6 +74,16 @@
    "pg0140160": [3, 1, 0],
    "pg0140161": [1, 1, 0],
    "pg0140162": [4, 0, 0]
+  }},
+  "tt0944947": {"title": "Game of Thrones", "scored": "2026-10-18", "summary": "The series contains extensive graphic sexual content, including full female nudity, graphic sex scenes, sexual violence, and incest, which are described as pervasive and disturbing. These explicit scenes occur throughout the show, with additional brief male nudity and prosthetic depictions. The rest of the content includes similar adult sexual themes and is not limited to brief or mild instances.", "items": {
+   "pg1881415": [10, 0, 1, "assault", null, "Full female nudity, graphic sex scenes including sexual violence, orgies, incest, some male rear nudity and brief prosth"],
+   "pg1968592": [10, 0, 1, "assault", null, "pornographic female sex acts, rape and incest involving female minors"]
+  }},
+  "tt11540908": {"title": "Carrie", "scored": "2026-10-18", "summary": "The series includes a sexual relationship between an adult teacher and a teenage student, with ongoing sexual talk about teenage puberty and awakening. It also shows repeated scenes of teenage girls in revealing bras and midriffs in a locker room, and a brief moment where a teen girl sends a topless photo. Most of the content is suggestive or sexual talk, with occasional brief topless nudity.", "items": {
+   "pg2180388": [1, 1, 0, null, null, "adult teacher with underage student, implied sexual relationship"],
+   "pg2180688": [3, 0, 1, null, null, "discussion of teenage puberty and sexual awakening"],
+   "pg2181700": [3, 1, 1, null, null, "teen girls in revealing bras and bare midriffs in locker room"],
+   "pg2181842": [7, 1, 0, null, null, "female topless photo with breasts visible"]
   }},
   "tt1442464": {"title": "The Middle", "scored": "2026-10-18", "summary": "The series includes frequent make‑out scenes with passionate kissing, and occasional revealing clothing such as cleavage, bras and bikini posters. The most explicit visual content is brief censored nudity and implied sex that is cut away or covered. Most other moments are talk, innuendo or non‑sexual clothing exposure.", "items": {
    "pg0820116": [2, 1, 0, null, null, "boy and girl making out"],
@@ -184,6 +202,11 @@
    "pg2149455": [3, 1, 0, null, null, "old man kissing marionette with tongue"],
    "pg2163681": [1, 1, 0, null, null, "boy says he doesn't want his penis seen while peeing"],
    "pg2163692": [1, 1, 0, null, null, "character asks what a penis is"]
+  }},
+  "tt39143902": {"title": "Leviticus", "scored": "2026-10-18", "summary": "The most explicit content is a sexual scene where one young man masturbates another, shown without visible nudity. There is also a brief implied shower scene with a woman whose activity is off‑screen, and a short kiss between two men. The remainder consists of non‑graphic sexual references and no visible nudity.", "items": {
+   "pg2057157": [4, 1, 0, null, null, "woman in shower, activity off\u2011screen"],
+   "pg2057318": [5, 1, 0, null, "scifi_horror", "nudity with no sexual framing, in a sci-fi or horror title"],
+   "pg2057455": [1, 1, 0, null, null, "two males kiss and caress"]
   }}
  }
 }
