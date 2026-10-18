@@ -109,7 +109,7 @@ Set these in `.env` locally, or as environment variables on your host.
 | `PG_OVERRIDES` | `./data/overrides.json` | Your own scores file |
 | `PG_EXPERIMENTAL` | `off` | The experimental ISCCI rubric: `both` shows it next to the main score, `only` shows it alone; see `experimental/` |
 | `PG_EPISODE_SCORES` | `off` | `on` scores episodes that have their own IMDb guide (experimental) |
-| `PG_TV_DESCRIPTION` | `on` | Puts the score at the top of the description on Samsung TVs, which don't show the chip or row. `off` turns it off |
+| `PG_TV_DESCRIPTION` | `on` | Puts the score and its details at the top of the description on Samsung TVs and the iPhone and iPad app, which don't show the chip. `off` turns it off |
 | `PG_IOS_FACT_LINE` | `on` | Adds the score after the runtime on the iPhone and iPad app, which doesn't show the chip. `off` turns it off |
 
 ## Saved scores

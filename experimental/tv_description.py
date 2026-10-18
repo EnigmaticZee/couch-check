@@ -12,8 +12,9 @@ import os
 from typing import List, Union
 
 NAME = "tv_description"
-# Matched against the request's User-Agent, e.g. "Mozilla/5.0 (SMART-TV; LINUX; Tizen 9.0)".
-TV_AGENTS = ("tizen",)
+# Matched against the request's User-Agent: Samsung TVs ("Mozilla/5.0 (SMART-TV; LINUX; Tizen 9.0)") and the
+# iPhone and iPad app ("Stremio-Apple/0.5.1 (iPhone…)"), which also hides the chip but shows the description.
+TV_AGENTS = ("tizen", "stremio-apple")
 
 
 def is_on() -> bool:
