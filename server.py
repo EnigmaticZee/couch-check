@@ -373,7 +373,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         raw_path, _, query = self.path.partition("?")
-        path = experiments.take_segment(unquote(raw_path))  # Stremio sends episode IDs as tt123%3A1%3A2
+        path = unquote(raw_path)  # Stremio sends episode IDs as tt123%3A1%3A2
         REQUEST.use_ai = not (path.startswith(EST_SEGMENT + "/") or "est=1" in query)
         if path.startswith(EST_SEGMENT + "/"):
             path = path[len(EST_SEGMENT):]
@@ -385,8 +385,7 @@ class Handler(BaseHTTPRequestHandler):
             file, content_type = STATIC_FILES[path]
             return self.send(200, file.read_bytes(), content_type, cache=86400)
         if path in ("/", "/configure"):
-            return self.send_html(experiments.configure(pages.configure(self.base_url(), MANIFEST["version"], ai_wanted()),
-                                                        self.base_url()))
+            return self.send_html(experiments.configure(pages.configure(self.base_url(), MANIFEST["version"], ai_wanted())))
         if experiments.handle(self, path, query, ai_wanted(), SCENE_TEXT):
             return
 

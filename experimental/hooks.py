@@ -4,11 +4,9 @@ With PG_EXPERIMENTAL unset, every function here hands production's own answer st
 """
 from __future__ import annotations
 
-import json
 import logging
 import os
 import re
-import threading
 from typing import Callable, List, Optional, Tuple
 
 from pg import cinemeta
@@ -21,14 +19,12 @@ from .iscci import service as iscci_service
 log = logging.getLogger("experimental")
 
 ISCCI_ON = enabled(iscci.NAME)
+# What the server shows while ISCCI is on: "both" (default: both scores side by side) or "only" (ISCCI alone).
 ISCCI_MODE = "only" if os.environ.get("PG_ISCCI", "both").lower() == "only" else "both"
-# Install-link segments for each install's rubric choice (only offered with PG_ISCCI=both).
-SEGMENTS = {"/r-iscci": "iscci", "/r-both": "both"}
 CHIP_CATEGORY = "Couch Check"
 META_CACHE = 300
 PENDING_CACHE = 30  # while episode scores are still being worked out
 
-_request = threading.local()
 _IN_APP_META = re.compile(r"^/meta/movie/si:(tt\d+)\.json$")
 _IN_APP_STREAM = re.compile(r"^/stream/movie/si:(tt\d+)\.json$")
 _PAGE = re.compile(r"^/iscci/guide/(tt\d+)$")
@@ -52,29 +48,11 @@ def enabled_any() -> bool:
     return bool(_names())
 
 
-# ---- per-request rubric choice -------------------------------------------------------------------------------
-
-def take_segment(path: str) -> str:
-    """Strips an install-link rubric segment (/r-iscci, /r-both) and remembers it for this request."""
-    _request.choice = None
-    for seg, choice in SEGMENTS.items():
-        if path.startswith(seg + "/"):
-            _request.choice = choice
-            return path[len(seg):]
-    return path
-
-
-def choice() -> str:
-    """"v5.1", "iscci" or "both" for this request."""
-    if not ISCCI_ON:
-        return "v5.1"
-    if ISCCI_MODE == "only":
-        return "iscci"
-    return getattr(_request, "choice", None) or "v5.1"
-
-
 def _rubrics() -> Tuple[str, ...]:
-    return {"v5.1": ("v5.1",), "iscci": ("iscci",), "both": ("v5.1", "iscci")}[choice()]
+    """Which rubrics every request gets, set by the server's environment (PG_EXPERIMENTAL and PG_ISCCI)."""
+    if not ISCCI_ON:
+        return ("v5.1",)
+    return ("iscci",) if ISCCI_MODE == "only" else ("v5.1", "iscci")
 
 
 # ---- manifest and configure page ------------------------------------------------------------------------------
@@ -85,36 +63,14 @@ def manifest(m: dict) -> dict:
     return {**m, "idPrefixes": list(m.get("idPrefixes", [])) + [present.IN_APP_PREFIX]}
 
 
-def configure(html: str, base: str) -> str:
+def configure(html: str) -> str:
     if not ISCCI_ON:
         return html
-    if ISCCI_MODE == "only":
-        note = ('<div class="card notice"><b>Experimental rubric.</b> This server scores with ISCCI, a new rubric '
-                'being tested. Scores show the worst scene plus extra points for how much there is.</div>')
-        return html.replace('<div class="card"><h3>Install</h3>', note + '<div class="card"><h3>Install</h3>', 1)
-    choice_html = """<div style="margin:0 0 16px"><b>Rubric</b> <small style="color:var(--muted)">· experimental</small>
-<div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:8px">
-<label><input type="radio" name="rubric" value="v5.1" checked> Current rubric</label>
-<label><input type="radio" name="rubric" value="iscci"> ISCCI only</label>
-<label><input type="radio" name="rubric" value="both"> Both, side by side</label></div>
-<small style="color:var(--muted)">Both shows two chips and two rows, and uses twice the AI calls.</small></div>"""
-    script = """<script>
-(function () {
-  var BASE = %s, SEG = {"v5.1": "", "iscci": "/r-iscci", "both": "/r-both"};
-  function update() {
-    var r = document.querySelector('input[name=rubric]:checked').value;
-    var m = BASE + SEG[r] + (document.getElementById("ai").checked ? "" : "/est") + "/manifest.json";
-    document.getElementById("manifest").textContent = m;
-    document.getElementById("install").href = "stremio://" + m.split("://")[1];
-    document.getElementById("installweb").href = "https://web.stremio.com/#/addons?addon=" + encodeURIComponent(m);
-  }
-  document.querySelectorAll('input[name=rubric]').forEach(function (e) { e.addEventListener("change", update); });
-  document.getElementById("ai").addEventListener("change", update);
-})();
-</script>""" % json.dumps(base)
-    html = html.replace('<label class="toggle"><input type="checkbox" id="ai"',
-                        choice_html + '<label class="toggle"><input type="checkbox" id="ai"', 1)
-    return html.replace("</main>", script + "</main>", 1)
+    what = ("scores with ISCCI, a new rubric being tested" if ISCCI_MODE == "only"
+            else "also shows ISCCI, a new rubric being tested, next to the main score")
+    note = (f'<div class="card notice"><b>Experimental rubric.</b> This server {what}. ISCCI scores the worst scene '
+            f'plus extra points for how much there is.</div>')
+    return html.replace('<div class="card"><h3>Install</h3>', note + '<div class="card"><h3>Install</h3>', 1)
 
 
 # ---- ISCCI pieces ---------------------------------------------------------------------------------------------

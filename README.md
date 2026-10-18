@@ -106,6 +106,7 @@ Set these in `.env` locally, or as environment variables on your host.
 | `PG_EXPORT_TOKEN` | — | Lets `tools/save_scores.py` download a hosted server's AI scores. Off while unset |
 | `PG_OVERRIDES` | `./data/overrides.json` | Your own scores file |
 | `PG_EXPERIMENTAL` | — | Experiments to switch on, comma-separated (`iscci`, `episode_scores`); see `experimental/` |
+| `PG_ISCCI` | `both` | With `iscci` on: `both` shows the main score and ISCCI side by side, `only` shows ISCCI alone |
 | `PG_TV_DESCRIPTION` | `on` | Puts the score at the top of the description on Samsung TVs, which don't show the chip or row. `off` turns it off |
 
 ## Saved scores
