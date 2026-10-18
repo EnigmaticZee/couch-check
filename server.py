@@ -30,7 +30,7 @@ _load_env_file(Path(__file__).parent / ".env")
 from pg import cinemeta, classify, overrides, pages, rubric, scores  # noqa: E402  (reads settings from the environment at import)
 from pg.service import Service, score
 from pg.store import Store
-from experimental import hooks as experiments  # switched on with PG_EXPERIMENTAL; see experimental/
+from experimental import hooks as experiments  # off unless switched on in the environment; see experimental/
 
 PORT = int(os.environ.get("PORT", "7001"))
 PUBLIC_URL = os.environ.get("PG_PUBLIC_URL", "").rstrip("/")

@@ -1,6 +1,6 @@
 """The only place production (server.py) calls into experiments.
 
-With PG_EXPERIMENTAL unset, every function here hands production's own answer straight back.
+With the experiments off (the default), every function here hands production's own answer straight back.
 """
 from __future__ import annotations
 
@@ -12,15 +12,13 @@ from typing import Callable, List, Optional, Tuple
 from pg import cinemeta
 from pg.store import SERIES_TYPES
 
-from . import enabled, episode_scores, iscci, tv_description
+from . import ISCCI_MODE, enabled, episode_scores, iscci, tv_description
 from .iscci import present
 from .iscci import service as iscci_service
 
 log = logging.getLogger("experimental")
 
 ISCCI_ON = enabled(iscci.NAME)
-# What the server shows while ISCCI is on: "both" (default: both scores side by side) or "only" (ISCCI alone).
-ISCCI_MODE = "only" if os.environ.get("PG_ISCCI", "both").lower() == "only" else "both"
 CHIP_CATEGORY = "Couch Check"
 META_CACHE = 300
 PENDING_CACHE = 30  # while episode scores are still being worked out
@@ -49,7 +47,7 @@ def enabled_any() -> bool:
 
 
 def _rubrics() -> Tuple[str, ...]:
-    """Which rubrics every request gets, set by the server's environment (PG_EXPERIMENTAL and PG_ISCCI)."""
+    """Which rubrics every request gets, set by PG_EXPERIMENTAL (off, both or only)."""
     if not ISCCI_ON:
         return ("v5.1",)
     return ("iscci",) if ISCCI_MODE == "only" else ("v5.1", "iscci")
