@@ -74,7 +74,7 @@ color:var(--accent);font-weight:600;text-decoration:none;font-size:.92rem}
 def color(level: Optional[int]) -> str:
     if level is None:
         return "grey"
-    return {"🟢": "green", "🟡": "yellow", "🟠": "orange", "🔴": "red", "🟣": "purple"}[rubric.emoji(level)]
+    return {"🟩": "green", "🟨": "yellow", "🟧": "orange", "🟪": "purple", "🟥": "red"}[rubric.emoji(level)]
 
 
 def _doc(title: str, body: str, refresh: bool = False, extra_css: str = "") -> str:
@@ -150,6 +150,18 @@ font-size:2.2rem;font-weight:800;color:#fff}
 .summary p{margin:0;font-size:1.05rem;line-height:1.6}
 .summary p.src{margin-top:10px;font-size:.78rem;color:var(--muted)}
 .why{display:flex;gap:14px;align-items:flex-start}.why p{margin:0}
+.scorerow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:16px 0 6px}
+.scorepill{display:inline-flex;align-items:center;gap:10px;border-radius:999px;padding:6px 18px 6px 6px;font-weight:700;
+font-size:1.1rem;color:#fff}
+.scorepill i{font-style:normal;background:rgba(255,255,255,.25);border-radius:999px;padding:3px 12px;font-size:1.15rem}
+.scorepill b.yours{background:#fff;color:#1D1830;font-size:.72rem;border-radius:999px;padding:2px 9px}
+.sp-green{background:#2f9a5a}.sp-yellow{background:#d9a520}.sp-orange{background:#e07b24}.sp-purple{background:#8b3fb8}
+.sp-red{background:#d23c3c}.sp-grey{background:#8a8698}
+.scorepill.est{background:transparent;color:inherit;box-shadow:inset 0 0 0 2px var(--pc)}
+.scorepill.est i{background:var(--pc);color:#fff}
+.warnpill{display:inline-flex;align-items:center;border-radius:999px;padding:6px 14px;font-weight:700;font-size:.9rem;
+background:#b8326f;color:#fff}
+.meaning{margin:4px 0 0;font-size:.95rem;opacity:.85}
 .nsbox{background:rgba(47,127,184,.12);color:#2f7fb8;border-radius:10px;padding:8px 10px;font-size:.88rem;margin-top:6px}
 .yours{border-color:var(--accent)}
 @media (prefers-color-scheme:dark){.nsbox{color:#6fb3e6}}
@@ -186,8 +198,7 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
     art = f'<div class="bgimg" style="background-image:url(\'{escape(background)}\')"></div>' if background else ""
     hero = f"""<div class="card hero{" art" if background else ""}">{art}<div class="inner">
 <h1>{escape(guide["title"])}{escape(year)}</h1><p class="sub">Sex &amp; nudity · {_imdb_link(imdb_id)}</p>
-<div class="score"><div class="badge lv-{color(lvl)}">{escape(result.shown.split("/")[0])}<small>/10</small></div>
-<div><h2>{escape(hero_name)}</h2><p>{escape(hero_desc)}</p></div></div>
+{_score_pill(result, hero_name, classify.is_ai(entry["classifier"]))}<p class="meaning">{escape(hero_desc)}</p>
 {_scale(lvl) if lvl is not None else ""}<div class="pills" style="margin-top:16px">{"".join(pills)}</div></div></div>"""
 
     def item_html(i: rubric.ScoredItem) -> str:
@@ -280,6 +291,27 @@ document.getElementById("back").addEventListener("click", function (e) {{
     return _doc(f"{guide['title']} · Couch Check", body, extra_css=HERO_CSS)
 
 
+PILL_SHADES = {"green": "#2f9a5a", "yellow": "#d9a520", "orange": "#e07b24", "purple": "#8b3fb8", "red": "#d23c3c"}
+
+
+def _score_pill(result: rubric.Result, name: str, ai: bool) -> str:
+    """The W3 pill: the band colour, the number in a bubble, the level name; warnings as pink pills beside it.
+
+    Filled for AI scores, outlined for keyword estimates, grey when IMDb has no items.
+    """
+    if result.level is None:
+        return f'<div class="scorerow"><span class="scorepill sp-grey"><i>?</i>{escape(name)}</span></div>'
+    c = color(result.level)
+    number = escape(result.shown.split("/")[0])
+    yours = '<b class="yours">Your Score</b>' if result.override else ""
+    if ai or result.override:
+        pill = f'<span class="scorepill sp-{c}"><i>{number}</i>{escape(name)}{yours}</span>'
+    else:
+        pill = f'<span class="scorepill est" style="--pc:{PILL_SHADES[c]}"><i>{number}</i>{escape(name)}</span>'
+    warnings = "".join(f'<span class="warnpill">⚠️ {escape(rubric.WARNINGS[w])}</span>' for w in result.warnings)
+    return f'<div class="scorerow">{pill}{warnings}</div>'
+
+
 def _nonsexual_box(i: rubric.ScoredItem) -> str:
     if not i.nonsexual:
         return ""
@@ -359,9 +391,9 @@ sex and nudity, with every flagged scene listed.</p></div></div>
 <div class="card notice"><b>Beta.</b> The scoring rubric is still being tuned, so a score can occasionally be off.
 Every score links to the scene-by-scene list it came from, so you can always check.</div>
 <div class="card"><h3>How it looks in Stremio</h3><div class="preview">
-<div class="mock"><div class="label">Couch Check</div><span class="chipx">🟡 4/10 · Implied · 5 Scenes · AI</span>
+<div class="mock"><div class="label">Couch Check</div><span class="chipx">🟧 4/10 · Implied · 5 Scenes · AI</span>
 <div class="cap">On the title's main screen. Tap it for the scene-by-scene breakdown.</div></div>
-<div class="mock"><div class="row"><b>🟡 4/10</b><div>Implied · AI Score
+<div class="mock"><div class="row"><b>🟧 4/10</b><div>Implied · AI Score
 5 Scenes
 Tap: Full List in Browser ↗</div></div><div class="cap">In every episode's and movie's stream list.</div></div>
 </div></div>

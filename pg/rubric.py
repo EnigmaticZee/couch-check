@@ -102,18 +102,12 @@ def meaning(level: int) -> str:
     return LADDER[level][2]
 
 
+# One coloured square per level (owner's colour scale, 18 Oct 2026): red only for the most explicit (8–10).
+SQUARES = ["🟩", "🟩", "🟨", "🟨", "🟧", "🟧", "🟪", "🟪", "🟥", "🟥", "🟥"]
+
+
 def emoji(level: Optional[int]) -> str:
-    if level is None:
-        return "❔"
-    if level <= 2:
-        return "🟢"
-    if level <= 4:
-        return "🟡"
-    if level <= 6:
-        return "🟠"
-    if level <= 7:
-        return "🔴"
-    return "🟣"  # 8–10: the most explicit titles stand apart from topless (7)
+    return "❔" if level is None else SQUARES[level]
 
 
 @dataclass
