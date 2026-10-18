@@ -27,10 +27,10 @@ def _load_env_file(path: Path) -> None:
 
 _load_env_file(Path(__file__).parent / ".env")
 
-from pg import cinemeta, classify, pages, rubric, scores  # noqa: E402  (reads settings from the environment at import)
+from pg import cinemeta, classify, overrides, pages, rubric, scores  # noqa: E402  (reads settings from the environment at import)
 from pg.service import Service, score
 from pg.store import Store
-from experimental import tv_description  # switched on with PG_EXPERIMENTAL; see experimental/
+from experimental import hooks as experiments  # switched on with PG_EXPERIMENTAL; see experimental/
 
 PORT = int(os.environ.get("PORT", "7001"))
 PUBLIC_URL = os.environ.get("PG_PUBLIC_URL", "").rstrip("/")
@@ -79,6 +79,7 @@ HTTP_CACHE_MAX = 300  # Stremio's webview keeps responses on disk; cap how long 
 
 log = logging.getLogger("pg")
 service = Service(Store(DB_PATH))
+experiments.init(service)
 
 
 def stream_row(imdb_id: str, kind: str, base: str) -> tuple:
@@ -95,15 +96,20 @@ def stream_row(imdb_id: str, kind: str, base: str) -> tuple:
     if entry["guide"].get("missing"):
         return {"name": "❔ Couch Check", "description": "No IMDb parents guide for this title.", "externalUrl": url}, 86400
 
-    result, _ = score(entry)
+    result, _ = scored(imdb_id, entry)
     if result.level is None:
         lines = ["No scene details on IMDb"]
+    elif result.override:
+        lines = [f"{rubric.name(result.level)} · Your score", f"AI said {result.override['ai_shown']}"]
     else:
         lines = [f"{rubric.name(result.level)} · {'AI score' if source_label(entry) == 'AI' else 'Estimate'}"]
+    if result.level is not None:
         detail = f"{result.scenes} scene{'s' if result.scenes != 1 else ''}"
         if result.prolonged:
             detail += f" · {result.prolonged} prolonged"
         lines.append(detail)
+        if result.star:
+            lines.append("* non-sexual nudity")
     if result.warnings:
         lines.append(f"⚠️ {rubric.warning_text(result)}")
     extras = []
@@ -114,9 +120,8 @@ def stream_row(imdb_id: str, kind: str, base: str) -> tuple:
     if extras:
         lines.append(" · ".join(extras))
     lines.append("Tap: full list in browser ↗")
-    level = "?" if result.level is None else str(result.level)
     return {
-        "name": f"{rubric.emoji(result.level)} {level}/10",
+        "name": f"{rubric.emoji(result.level)} {result.shown}",
         "description": "\n".join(lines),
         "externalUrl": url,
     }, 3600
@@ -134,11 +139,13 @@ def meta_with_score(imdb_id: str, kind: str, base: str) -> tuple:
     elif entry["guide"].get("missing"):
         label, max_age = "❔ No IMDb guide", 86400
     else:
-        result, _ = score(entry)
+        result, _ = scored(imdb_id, entry)
         if result.level is None:
             label = "❔ No scene details"
+        elif result.override:
+            label = f"{rubric.emoji(result.level)} {result.level}/10 · {rubric.name(result.level)} · Your score"
         else:
-            label = f"{rubric.emoji(result.level)} {result.level}/10 · {rubric.name(result.level)}"
+            label = f"{rubric.emoji(result.level)} {result.shown} · {rubric.name(result.level)}"
             if result.scenes:
                 label += f" · {result.scenes} scene{'s' if result.scenes != 1 else ''}"
             label += f" · {source_label(entry)}"
@@ -166,6 +173,23 @@ def lookup(imdb_id: str, wait: float):
     if ai_wanted():
         return service.lookup(imdb_id, wait)
     return service.lookup_estimate(imdb_id, wait)
+
+
+def scored(imdb_id: str, entry: dict) -> tuple:
+    """score() with the owner's override (data/overrides.json) applied. Returns (result, items)."""
+    result, items = score(entry)
+    return overrides.apply(imdb_id, result), items
+
+
+def why_text(result: rubric.Result) -> str:
+    """What set the level, for "why this score": the AI's note of what's shown, or the item itself."""
+    top = result.top
+    if top is None:
+        return ""
+    text = top.shown or (top.text if SCENE_TEXT else "")
+    if top.nonsexual and text:
+        text += f" (non-sexual: {rubric.NONSEXUAL[top.nonsexual].lower()})"
+    return text
 
 
 def source_label(entry: dict) -> str:
@@ -208,12 +232,13 @@ def breakdown_meta(imdb_id: str, base: str) -> tuple:
         meta["description"] = "IMDb has no parents guide for this title."
         return meta, 86400
 
-    result, items = score(entry)
+    result, items = scored(imdb_id, entry)
     if result.level is None:
         meta["releaseInfo"] = "❔ No scene details"
         meta["description"] = "IMDb has no flagged Sex & Nudity items for this title yet."
     else:
-        meta["releaseInfo"] = (f"{rubric.emoji(result.level)} {result.level}/10 · {rubric.name(result.level)} · {source_label(entry)}"
+        meta["releaseInfo"] = (f"{rubric.emoji(result.level)} {result.shown} · {rubric.name(result.level)} · "
+                               + ("Your score" if result.override else source_label(entry))
                                + (" · ⚠️" if result.warnings else ""))
         facts = [f"{result.scenes} scene{'s' if result.scenes != 1 else ''} at level {rubric.SCENE_THRESHOLD}+"]
         if result.prolonged:
@@ -227,8 +252,13 @@ def breakdown_meta(imdb_id: str, base: str) -> tuple:
         summary = entry.get("summary") if classify.is_ai(entry["classifier"]) else None
         warning = (f"⚠️ Content warning: {rubric.warning_text(result)} (part of the story, not shown, so it isn't scored). "
                    if result.warnings else "")
+        why = why_text(result)
+        why = f"Score set by: {why}. " if why and not result.override else ""
+        if result.override:
+            why = (f"Your score: {result.level}/10" + (f" ({result.override['note']})" if result.override["note"] else "")
+                   + f"; the AI said {result.override['ai_shown']}. ")
         meta["description"] = (
-            warning + f"{summary or rubric.auto_summary(result, items)} "
+            warning + why + f"{summary or rubric.auto_summary(result, items)} "
             f"{(lambda t: t[:1].upper() + t[1:])(' · '.join(facts))}. "
             + ("Every flagged scene is listed on the right, most explicit first. " if SCENE_TEXT
                else "Scene counts by level are on the right; the scene descriptions are on IMDb. ")
@@ -250,12 +280,19 @@ def breakdown_rows(imdb_id: str, base: str) -> tuple:
     if guide.get("missing"):
         return [], 86400
     url = web_url(base, imdb_id, guide.get("type") in SERIES_TYPES)
-    result, items = score(entry)
+    result, items = scored(imdb_id, entry)
     if not items:
         return [{"name": "❔", "description": "No flagged scenes on IMDb.", "externalUrl": url}], 3600
     summary = (entry.get("summary") if classify.is_ai(entry["classifier"]) else None) or rubric.auto_summary(result, items)
     # The summary first, so it's visible in the list without reading the left side.
     rows = [{"name": "📝\nIn short", "description": "\n".join(textwrap.wrap(summary, ROW_WIDTH)), "externalUrl": url}]
+    if result.override:
+        note = f"{result.override['note']}. " if result.override["note"] else ""
+        rows.append({"name": f"✋\nYour score", "externalUrl": url, "description": "\n".join(
+            textwrap.wrap(f"{note}You set {result.level}/10; the AI said {result.override['ai_shown']}.", ROW_WIDTH))})
+    elif why_text(result):
+        rows.append({"name": f"🔎\nWhy {result.shown}", "externalUrl": url,
+                     "description": "\n".join(textwrap.wrap(f"Score set by: {why_text(result)}", ROW_WIDTH))})
     if result.warnings:
         rows.append({"name": "⚠️\nWarning", "externalUrl": url, "description": "\n".join(
             textwrap.wrap(f"{rubric.warning_text(result)}: part of the story, not shown, so it isn't scored.", ROW_WIDTH))})
@@ -263,9 +300,11 @@ def breakdown_rows(imdb_id: str, base: str) -> tuple:
         return rows + level_rows(imdb_id, items), 3600
     # Warning items first (they're level 0, so they'd otherwise sink to the bottom).
     for i in sorted(items, key=lambda i: (not i.warning, -i.level, not i.is_scene)):
-        tags = [t for t, on in (("Prolonged", i.prolonged), ("Overview", not i.is_scene), ("Spoiler", i.is_spoiler)) if on]
+        tags = [t for t, on in ((f"Non-sexual: {rubric.NONSEXUAL.get(i.nonsexual, '')}", bool(i.nonsexual)),
+                                ("Prolonged", i.prolonged), ("Overview", not i.is_scene), ("Spoiler", i.is_spoiler)) if on]
+        star = "*" if i.nonsexual else ""
         rows.append({
-            "name": f"⚠️\nWarning" if i.warning else f"{rubric.emoji(i.level)} {i.level}\n{rubric.name(i.level)}",
+            "name": f"⚠️\nWarning" if i.warning else f"{rubric.emoji(i.level)} {i.level}{star}\n{rubric.name(i.level)}",
             # Stremio cuts each line of a row short, so wrap the text over several lines.
             "description": "\n".join(textwrap.wrap(i.text, ROW_WIDTH) + ([" · ".join(tags)] if tags else [])),
             "externalUrl": url,
@@ -334,19 +373,22 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         raw_path, _, query = self.path.partition("?")
-        path = unquote(raw_path)  # Stremio sends episode IDs as tt123%3A1%3A2
+        path = experiments.take_segment(unquote(raw_path))  # Stremio sends episode IDs as tt123%3A1%3A2
         REQUEST.use_ai = not (path.startswith(EST_SEGMENT + "/") or "est=1" in query)
         if path.startswith(EST_SEGMENT + "/"):
             path = path[len(EST_SEGMENT):]
         if path == "/export/scores.json":
             return self.export_scores()
         if path == "/manifest.json":
-            return self.send_json({**MANIFEST, "logo": f"{self.base_url()}/static/logo.png"})
+            return self.send_json(experiments.manifest({**MANIFEST, "logo": f"{self.base_url()}/static/logo.png"}))
         if path in STATIC_FILES:
             file, content_type = STATIC_FILES[path]
             return self.send(200, file.read_bytes(), content_type, cache=86400)
         if path in ("/", "/configure"):
-            return self.send_html(pages.configure(self.base_url(), MANIFEST["version"], ai_wanted()))
+            return self.send_html(experiments.configure(pages.configure(self.base_url(), MANIFEST["version"], ai_wanted()),
+                                                        self.base_url()))
+        if experiments.handle(self, path, query, ai_wanted(), SCENE_TEXT):
+            return
 
         m = BREAKDOWN_META_PATH.match(path)
         if m:
@@ -361,21 +403,20 @@ class Handler(BaseHTTPRequestHandler):
         m = STREAM_PATH.match(path)
         if m:
             kind, imdb_id = m.groups()
-            row, max_age = stream_row(imdb_id, kind, self.base_url())
-            log.info("Stream %s %s -> %s", kind, path.rsplit("/", 1)[-1], row["name"])
-            return self.send_json({"streams": [row], "cacheMaxAge": max_age}, cache=max_age)
+            rows, max_age = experiments.streams(imdb_id, kind, path, self.base_url(), ai_wanted(),
+                                                lambda: stream_row(imdb_id, kind, self.base_url()))
+            log.info("Stream %s %s -> %s", kind, path.rsplit("/", 1)[-1], " | ".join(r["name"] for r in rows))
+            return self.send_json({"streams": rows, "cacheMaxAge": max_age}, cache=max_age)
         m = META_PATH.match(path)
         if m:
             kind, imdb_id = m.groups()
-            meta, max_age = meta_with_score(imdb_id, kind, self.base_url())
+            meta, max_age, headers = experiments.meta(imdb_id, kind, self.base_url(), ai_wanted(),
+                                                      self.headers.get("User-Agent", ""),
+                                                      lambda: meta_with_score(imdb_id, kind, self.base_url()))
             if meta is None:
                 return self.send(404, "Not found", "text/plain")
-            chip = next(l["name"] for l in meta["links"] if l.get("category") == CHIP_CATEGORY)
-            log.info("Meta %s %s -> %s", kind, imdb_id, chip)
-            headers = None
-            if tv_description.is_on():  # the answer differs by device, so caches must keep them apart
-                meta = tv_description.apply(meta, chip, self.headers.get("User-Agent", ""))
-                headers = {"Vary": "User-Agent"}
+            chips = [l["name"] for l in meta.get("links") or [] if l.get("category") == CHIP_CATEGORY]
+            log.info("Meta %s %s -> %s", kind, imdb_id, " | ".join(chips))
             return self.send_json({"meta": meta, "cacheMaxAge": max_age}, cache=max_age, headers=headers)
         if path.startswith("/stream/"):
             return self.send_json({"streams": []}, cache=86400)
@@ -404,7 +445,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_html(pages.pending(imdb_id))
         if entry["guide"].get("missing"):
             return self.send_html(pages.missing(imdb_id), 404)
-        result, items = score(entry)
+        result, items = scored(imdb_id, entry)
         is_series = is_series or entry["guide"].get("type") in SERIES_TYPES
         art = cinemeta.meta("series" if is_series else "movie", imdb_id) or {}
         self.send_html(pages.breakdown(imdb_id, entry, result, items, is_series, art.get("background"), SCENE_TEXT))

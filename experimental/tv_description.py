@@ -6,6 +6,8 @@ Tizen requests the chip's text becomes its first line. Other apps get the meta u
 """
 from __future__ import annotations
 
+from typing import List, Union
+
 from . import enabled
 
 NAME = "tv_description"
@@ -22,10 +24,11 @@ def is_tv(user_agent: str) -> bool:
     return any(name in agent for name in TV_AGENTS)
 
 
-def apply(meta: dict, chip: str, user_agent: str) -> dict:
-    """The meta with the chip's text as the first line of its description, for TV requests while switched on."""
+def apply(meta: dict, chips: Union[str, List[str]], user_agent: str) -> dict:
+    """The meta with the chip text(s) as the first line of its description, for TV requests while switched on."""
     if not is_on() or not is_tv(user_agent):
         return meta
-    line = f"Couch Check: {chip}"
+    chips = [chips] if isinstance(chips, str) else chips
+    line = "Couch Check: " + " | ".join(chips)
     description = (meta.get("description") or "").strip()
     return {**meta, "description": f"{line}\n\n{description}" if description else line}

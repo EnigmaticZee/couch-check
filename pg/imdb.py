@@ -16,6 +16,7 @@ query PG($id: ID!) {
     titleText { text }
     releaseYear { year endYear }
     titleType { id }
+    genres { genres { text } }
     parentsGuide {
       categories { category { id } totalSeverityVotes severityBreakdown { voteType votedFor } }
       guideItems(first: 250, filter: { categories: ["NUDITY"] }) {
@@ -80,6 +81,7 @@ def fetch(imdb_id: str) -> dict:
         "year": (title.get("releaseYear") or {}).get("year"),
         "end_year": (title.get("releaseYear") or {}).get("endYear"),  # set once a show has ended
         "type": (title.get("titleType") or {}).get("id"),
+        "genres": [g["text"] for g in ((title.get("genres") or {}).get("genres") or [])],
         "votes": votes,
         "items": items,
     }

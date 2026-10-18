@@ -149,6 +149,13 @@ font-size:2.2rem;font-weight:800;color:#fff}
 .score p{margin:2px 0 0;font-size:.95rem;opacity:.85}
 .summary p{margin:0;font-size:1.05rem;line-height:1.6}
 .summary p.src{margin-top:10px;font-size:.78rem;color:var(--muted)}
+.why{display:flex;gap:14px;align-items:flex-start}.why p{margin:0}
+.strip{display:flex;gap:4px;align-items:flex-end;height:64px;margin:4px 0 8px}
+.strip span{flex:1;border-radius:4px 4px 0 0;min-width:4px}
+.strip span.ns{opacity:.5;outline:2px dashed #2f7fb8;outline-offset:-2px}
+.nsbox{background:rgba(47,127,184,.12);color:#2f7fb8;border-radius:10px;padding:8px 10px;font-size:.88rem;margin-top:6px}
+.yours{border-color:var(--accent)}
+@media (prefers-color-scheme:dark){.nsbox{color:#6fb3e6}}
 """
 
 
@@ -163,7 +170,13 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
     else:
         hero_name, hero_desc = rubric.name(lvl), rubric.meaning(lvl)
 
-    pills = ['<span class="pill accent">' + ("AI score" if classify.is_ai(entry["classifier"]) else "Keyword estimate") + "</span>"]
+    if result.override:
+        pills = ['<span class="pill accent">Your score</span>',
+                 f'<span class="pill">AI said {escape(result.override["ai_shown"])}</span>']
+    else:
+        pills = ['<span class="pill accent">' + ("AI score" if classify.is_ai(entry["classifier"]) else "Keyword estimate") + "</span>"]
+    if result.star:
+        pills.append('<span class="pill">* non-sexual nudity</span>')
     if lvl is not None:
         pills.append(f'<span class="pill">{result.scenes} scene{"s" if result.scenes != 1 else ""} at level {rubric.SCENE_THRESHOLD}+</span>')
         if result.prolonged:
@@ -176,7 +189,7 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
     art = f'<div class="bgimg" style="background-image:url(\'{escape(background)}\')"></div>' if background else ""
     hero = f"""<div class="card hero{" art" if background else ""}">{art}<div class="inner">
 <h1>{escape(guide["title"])}{escape(year)}</h1><p class="sub">Sex &amp; nudity · {_imdb_link(imdb_id)}</p>
-<div class="score"><div class="badge lv-{color(lvl)}">{lvl if lvl is not None else "?"}<small>/10</small></div>
+<div class="score"><div class="badge lv-{color(lvl)}">{escape(result.shown.split("/")[0])}<small>/10</small></div>
 <div><h2>{escape(hero_name)}</h2><p>{escape(hero_desc)}</p></div></div>
 {_scale(lvl) if lvl is not None else ""}<div class="pills" style="margin-top:16px">{"".join(pills)}</div></div></div>"""
 
@@ -189,8 +202,9 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
         if i.warning:
             chip = f'<span class="chip lv-warn" title="{escape(rubric.WARNINGS[i.warning])}">⚠️</span>'
         else:
-            chip = f'<span class="chip lv-{color(i.level)}" title="{escape(rubric.name(i.level))}">{i.level}</span>'
-        return f"<li>{chip}<div>{text}{tag_html}</div></li>"
+            chip = (f'<span class="chip lv-{color(i.level)}" title="{escape(rubric.name(i.level))}">'
+                    f'{i.level}{"*" if i.nonsexual else ""}</span>')
+        return f"<li>{chip}<div>{text}{_nonsexual_box(i)}{tag_html}</div></li>"
 
     warned = [i for i in items if i.warning]
     scored = [i for i in items if not i.warning]
@@ -245,6 +259,7 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
     if result.warnings:
         summary_html = f"""<div class="card warning"><h3>⚠️ Content warning</h3><p><b>{escape(rubric.warning_text(result))}</b>.
 It's part of the story but not shown, so it isn't scored. The items are listed first below.</p></div>""" + summary_html
+    summary_html += _why(result, show_text) + _strip(items)
     title_link = f"stremio:///detail/{'series' if is_series else 'movie'}/{imdb_id}"
     back = f"""<a class="back" id="back" href="{escape(title_link)}">← Back to Stremio</a>
 <script>
@@ -265,6 +280,45 @@ document.getElementById("back").addEventListener("click", function (e) {{
     body = f"""{back}{hero}{summary_html}{items_html}{vote_html}<div class="card">{_ladder_table()}</div>
 <p class="foot">{escape(rubric.BETA_NOTICE)}<br>Scene descriptions from IMDb's parents guide. Levels by Couch Check.</p>"""
     return _doc(f"{guide['title']} · Couch Check", body, extra_css=HERO_CSS)
+
+
+def _nonsexual_box(i: rubric.ScoredItem) -> str:
+    if not i.nonsexual:
+        return ""
+    return (f'<div class="nsbox">ℹ️ <b>Non-sexual · {escape(rubric.NONSEXUAL[i.nonsexual])}.</b> '
+            f'Counted at {rubric.NONSEXUAL_CAP} at most and marked *.</div>')
+
+
+def _why(result: rubric.Result, show_text: bool) -> str:
+    """The item that set the level, or the owner's own score."""
+    if result.override:
+        note = f" {escape(result.override['note'])}." if result.override["note"] else ""
+        return (f'<div class="card yours"><h3>Your score</h3><p style="margin:0">You set this title to '
+                f'<b>{result.level}/10</b>.{note} The AI scored it {escape(result.override["ai_shown"])}.</p></div>')
+    top = result.top
+    if top is None or result.level is None:
+        return ""
+    if show_text:
+        detail = escape(top.text)
+        if top.is_spoiler:
+            detail = f'<details class="spoiler"><summary>Spoiler: tap to show</summary>{detail}</details>'
+        shown = f'<p class="muted" style="margin-top:6px">Shown: {escape(top.shown)}</p>' if top.shown else ""
+    else:
+        detail, shown = escape(top.shown or "One item at this level; the description is on IMDb."), ""
+    return (f'<div class="card"><h3>Why {escape(result.shown)}</h3><div class="why">'
+            f'<span class="chip lv-{color(top.level)}">{top.level}{"*" if top.nonsexual else ""}</span>'
+            f'<div><p>{detail}</p>{shown}{_nonsexual_box(top)}</div></div></div>')
+
+
+def _strip(items: List[rubric.ScoredItem]) -> str:
+    """One bar per item, in IMDb's order: a one-off spike or a pattern."""
+    scored = [i for i in items if not i.warning]
+    if len(scored) < 2:
+        return ""
+    bars = "".join(f'<span class="lv-{color(i.level)}{" ns" if i.nonsexual else ""}" style="height:{max(8, i.level * 10)}%"'
+                   f' title="{i.level} · {escape(rubric.name(i.level))}"></span>' for i in scored)
+    return (f'<div class="card"><h3>Scene strip</h3><div class="strip">{bars}</div>'
+            f'<p class="muted" style="margin:0">One bar per IMDb item, in IMDb\'s order. Dashed bars are non-sexual (*).</p></div>')
 
 
 CONFIGURE_CSS = """

@@ -1,7 +1,8 @@
 """Saved AI scores in data/scores.json (written by tools/save_scores.py).
 
 The file holds only our own derived data: for each title, IMDb's item IDs mapped to
-[level, is_scene, prolonged] plus, for warning items, the warning key as a fourth value. IMDb's text is never stored in it; the server fetches
+[level, is_scene, prolonged, warning key or null, non-sexual key or null, what's shown], with trailing empty values
+left off. IMDb's text is never stored in it; the server fetches
 that live, one title at a time, and matches it to these scores by item ID.
 """
 from __future__ import annotations
@@ -65,7 +66,8 @@ def lookup(imdb_id: str, items: List[dict], fallback) -> Optional[List[dict]]:
     for i in items:
         s = stored.get(i["id"])
         out.append({"level": s[0], "is_scene": bool(s[1]), "prolonged": bool(s[2]),
-                    "warning": s[3] if len(s) > 3 else None} if s else fallback(i["text"]))
+                    "warning": s[3] if len(s) > 3 else None, "nonsexual": s[4] if len(s) > 4 else None,
+                    "shown": s[5] if len(s) > 5 else ""} if s else fallback(i["text"]))
     return out
 
 
@@ -93,6 +95,15 @@ def save_file(data: dict) -> None:
                     + ",\n".join(titles) + "\n }\n}\n")
 
 
+def _packed(c: dict) -> list:
+    """One item's scores as a list, dropping empty values from the end."""
+    values = [c["level"], int(bool(c["is_scene"])), int(bool(c["prolonged"])), c.get("warning"), c.get("nonsexual"),
+              c.get("shown") or None]
+    while len(values) > 3 and values[-1] is None:
+        values.pop()
+    return values
+
+
 def from_cache(rows) -> dict:
     """Builds scores-file titles from cached AI scores: {imdb_id: {title, scored, summary, items}}.
 
@@ -108,8 +119,6 @@ def from_cache(rows) -> dict:
             "title": guide.get("title") or e["imdb_id"],
             "scored": date.fromtimestamp(e["fetched_at"]).isoformat(),
             "summary": e.get("summary"),
-            "items": {i["id"]: [c["level"], int(bool(c["is_scene"])), int(bool(c["prolonged"]))]
-                      + ([c["warning"]] if c.get("warning") else [])
-                      for i, c in zip(items, e["classified"])},
+            "items": {i["id"]: _packed(c) for i, c in zip(items, e["classified"])},
         }
     return out

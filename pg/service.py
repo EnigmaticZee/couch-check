@@ -98,7 +98,7 @@ class Service:
             texts = [i["text"] for i in guide.get("items", [])]
             if not texts or not classify.ai_enabled() or imdb_id in scores.titles():
                 return
-            classified, classifier, summary = classify.classify(texts)
+            classified, classifier, summary = classify.classify(texts, classify.context(guide))
             if classifier == "keywords" and cached and classify.is_ai(cached["classifier"]):
                 return  # AI unavailable right now; keep the existing AI score rather than downgrading it
             self.store.put(imdb_id, guide, classified, classifier, fetched_at, summary)
@@ -138,6 +138,8 @@ def score(entry: dict) -> Tuple[rubric.Result, list]:
             is_scene=c["is_scene"],
             prolonged=c["prolonged"],
             warning=c.get("warning"),
+            nonsexual=c.get("nonsexual"),
+            shown=c.get("shown") or "",
         )
         for item, c in zip(guide.get("items", []), classified)
     ]

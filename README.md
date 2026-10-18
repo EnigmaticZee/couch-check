@@ -4,7 +4,7 @@
 
 <p align="center">
   <img alt="Stremio addon" src="https://img.shields.io/badge/Stremio-addon-7B5BF5">
-  <img alt="Rubric v5.1, beta" src="https://img.shields.io/badge/rubric-v5.1%20beta-F0BF7E">
+  <img alt="Rubric v5.2, beta" src="https://img.shields.io/badge/rubric-v5.2%20beta-F0BF7E">
   <img alt="Python 3.9+" src="https://img.shields.io/badge/python-3.9%2B-3776AB">
   <img alt="No dependencies" src="https://img.shields.io/badge/dependencies-none-2F9A5A">
   <img alt="MIT license" src="https://img.shields.io/badge/license-MIT-lightgrey">
@@ -104,6 +104,8 @@ Set these in `.env` locally, or as environment variables on your host.
 | `PG_DB` | `./cache.sqlite3` | Cache location |
 | `PG_SCORES` | `./data/scores.json` | Saved scores file |
 | `PG_EXPORT_TOKEN` | — | Lets `tools/save_scores.py` download a hosted server's AI scores. Off while unset |
+| `PG_OVERRIDES` | `./data/overrides.json` | Your own scores file |
+| `PG_EXPERIMENTAL` | — | Experiments to switch on, comma-separated (`tv_description`, `iscci`, `episode_scores`); see `experimental/` |
 
 ## Saved scores
 
@@ -115,6 +117,18 @@ python3 tools/save_scores.py https://your-host  # from a hosted server
 ```
 
 For a hosted server, set the same long random `PG_EXPORT_TOKEN` on the server and in your local `.env`. Then commit `data/scores.json` and redeploy. If the rubric version changes, the file starts fresh and titles are re-scored as they're opened.
+
+## Your own scores
+
+Disagree with a title's score after watching it? Add it to [`data/overrides.json`](data/overrides.json) and redeploy. Your level replaces the computed one everywhere, marked "Your score", with the AI's score shown alongside:
+
+```json
+{"tt0106179": {"level": 4, "note": "Milder than it sounds", "set": "2026-10-17"}}
+```
+
+## Checking the rubric
+
+[`data/reference.json`](data/reference.json) lists titles with the level range they should land in. After changing the rubric or the AI instructions, run `python3 tools/check_rubric.py` to score them from scratch and see which still land on target.
 
 ## About the data
 
