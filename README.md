@@ -22,7 +22,7 @@ Couch Check reads each title's IMDb parents guide and turns its intimate-content
 - **A breakdown inside Stremio.** Tap the chip for a short summary and every flagged scene, grouped by level, with spoilers hidden.
 - **In every stream list.** A row at the top of each episode's and movie's sources.
 - **On Samsung TVs and iPhone.** Those apps hide the chip, so the score opens the title's description instead, and on iPhone it also sits next to the runtime.
-- **AI score or quick estimate.** Every score is labelled. `AI` means an AI model read each scene description and understood its context (a joke about something isn't the same as seeing it). `Est.` is a rougher keyword estimate, shown until the AI has scored a title, or always if you turn AI off.
+- **AI score or quick keyword score.** `AI` means an AI model read each scene description and understood its context (a joke about something isn't the same as seeing it). A score with no label is a rougher one based on keywords, shown until the AI has scored a title, or always if you turn AI off. If the AI can't answer, the score says why, e.g. `AI Limit Reached` when a free key has run out for the day.
 
 ## The scale
 
@@ -51,7 +51,7 @@ Couch Check needs only Python 3.9+, with no packages to install. Stremio only in
 
 ### 1. Get an AI key (optional, free)
 
-Without a key everything works, with keyword estimates instead of AI scores.
+Without a key everything works, with keyword scores instead of AI scores.
 
 1. Create an account at [console.groq.com](https://console.groq.com) (no payment method needed) and create an API key.
 2. Copy `.env.example` to `.env` and paste the key after `PG_AI_API_KEY=`. Any OpenAI-compatible API works; the template is set up for Groq's free tier.
@@ -83,8 +83,8 @@ Render's free disk is wiped on each deploy or restart, so titles are re-fetched 
 
 ### 3. Install in Stremio
 
-1. Open your address's `/configure` page and click **Install in Stremio**. Turn off **Use AI scores** there first if you only want estimates.
-2. For the chip on the main screen, Couch Check has to sit **above Cinemeta** in your addon list. The Stremio app can't reorder addons, so use a community addon manager (search "Stremio Addon Manager"), drag Couch Check above Cinemeta, sync, and restart Stremio. The stream-list row works without this step.
+1. Open your address's `/configure` page. Turn off **Use AI scores** there first if you only want keyword scores.
+2. For the chip on the main screen, Couch Check has to sit **above Cinemeta** in your addon list, and the Stremio app can't reorder addons. Open **Install at the Top**, sign in with your Stremio email and password, and Couch Check is installed straight at the top of your list; then restart Stremio. Your email and password go from the page straight to Stremio's own API, never to your Couch Check server. If you sign in to Stremio with Facebook, Google or Apple, click **Install in Stremio** instead and use a community addon manager (search "Stremio Addon Manager") to drag Couch Check above Cinemeta. The stream-list row works without this step.
 
 Breakdowns link to IMDb for the scene descriptions by default. For a copy only you use, set `PG_SCENE_TEXT=on` to show them in the breakdowns instead (see [About the data](#about-the-data)).
 
@@ -98,7 +98,7 @@ Set these in `.env` locally, or as environment variables on your host.
 | `PG_AI_FALLBACK_KEY` | — | A backup key from another account, used while the main key is over its limit |
 | `PG_AI_FALLBACK_MODEL` | — | A backup model on the main key (e.g. a smaller one), used while the main model is over its limit |
 | `PG_AI_MIN_INTERVAL` | `1.5` | Seconds between AI calls |
-| `PG_AI_DAILY_LIMIT` | `500` | Max AI calls per day; beyond that, new titles get estimates |
+| `PG_AI_DAILY_LIMIT` | `500` | Max AI calls per day with the server's own key; beyond that, new titles get keyword scores |
 | `PG_AI_REASONING_EFFORT` | `low` for gpt-oss | Reasoning effort for reasoning models |
 | `PG_CLASSIFIER` | — | `keywords` turns AI scoring off for everyone |
 | `PG_SCENE_TEXT` | `off` | `off` shows scene counts per level with a link to IMDb; `on` shows IMDb's scene descriptions in the breakdowns (personal copies only) |
@@ -112,6 +112,21 @@ Set these in `.env` locally, or as environment variables on your host.
 | `PG_EPISODE_SCORES` | `off` | `on` scores episodes that have their own IMDb guide (experimental) |
 | `PG_TV_DESCRIPTION` | `on` | Puts the score and its details at the top of the description on Samsung TVs and the iPhone and iPad app, which don't show the chip. `off` turns it off |
 | `PG_IOS_FACT_LINE` | `on` | Adds the score after the runtime on the iPhone and iPad app, which doesn't show the chip. `off` turns it off |
+| `PG_USER_KEYS` | `off` | `on` for a copy other people use: the configure page asks each viewer for their own AI key (see [A copy for everyone](#a-copy-for-everyone)) |
+| `PG_CONFIG_SECRET` | — | Needed with `PG_USER_KEYS=on`: a long random secret (32+ characters) that locks viewers' keys inside their install links. Changing it means everyone reinstalls |
+
+## A copy for everyone
+
+With `PG_USER_KEYS=on`, a copy can serve other people without sharing your AI key:
+
+- Don't set `PG_AI_API_KEY` on it. Viewers without a key of their own get keyword scores.
+- The configure page has a collapsed **AI Scores (Optional)** section: viewers pick an AI service (Groq, Google Gemini, Mistral, OpenRouter or any OpenAI-compatible one), paste their own key and click **Test Key**. The model is chosen for them (an **Advanced** part lets them change it). `/keys` is a step-by-step guide to getting a free key.
+- The key is encrypted with `PG_CONFIG_SECRET` into the viewer's install link (`/k/<token>/manifest.json`). The server never stores it, and the token is kept out of the logs.
+- Each key has its own limits: when one viewer's free plan runs out, only that viewer sees `AI Limit Reached`, and AI scores come back on their own when the limit resets. There's no daily cap for viewers' keys.
+- Scores are shared: once anyone's key has scored a title, everyone sees that AI score.
+- The copy gets its own addon ID, so it can be installed next to a personal one. Your own scores (`data/overrides.json`) aren't shown, and `PG_SCENE_TEXT` must stay `off`.
+
+Generate a secret with `python3 -c "import secrets; print(secrets.token_urlsafe(40))"`.
 
 ## Saved scores
 

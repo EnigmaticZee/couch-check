@@ -16,7 +16,7 @@ IN_APP_PREFIX = "si:"  # the in-app ISCCI breakdown is a virtual movie with this
 
 
 def source(entry: dict) -> str:
-    return "AI" if is_ai(entry) else "Est."
+    return "AI" if is_ai(entry) else ""  # keyword scores carry no label
 
 
 def chip(result: rubric.Result, entry: dict, label: str = "") -> str:
@@ -24,7 +24,8 @@ def chip(result: rubric.Result, entry: dict, label: str = "") -> str:
     lead = f"{label} " if label else ""
     if result.level is None:
         return f"{lead}❔ No scene details"
-    text = f"{lead}{rubric.emoji(result.level)} {result.shown} · {result.tag} {result.pips} · {source(entry)}"
+    text = f"{lead}{rubric.emoji(result.level)} {result.shown} · {result.tag} {result.pips}" + (
+        f" · {source(entry)}" if source(entry) else "")
     return text + (" · ⚠️" if result.warnings else "")
 
 
@@ -40,7 +41,7 @@ def stream_row(result: rubric.Result, entry: dict, url: str, scope: str, label: 
     if result.level is None:
         return {"name": f"❔ {label or 'Couch Check'}".strip(), "description": "No scene details on IMDb",
                 "externalUrl": url}
-    lines = [f"{result.tag} · {'AI score' if is_ai(entry) else 'Estimate'}",
+    lines = [result.tag + (" · AI score" if is_ai(entry) else ""),
              f"{rubric.band_name(result.level)} · {result.presence} {result.pips}"]
     if result.scenes:
         lines.append(f"{result.scenes} scene{'s' if result.scenes != 1 else ''} at 4+")

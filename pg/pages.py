@@ -6,7 +6,7 @@ from html import escape
 from typing import List, Optional
 from urllib.parse import quote
 
-from . import classify, rubric
+from . import classify, providers, rubric
 
 CSS = """
 :root{--bg:#f5f3fa;--card:#fff;--text:#1c1830;--muted:#6a6580;--line:#e6e2f0;--accent:#5b3ba8;--accent-soft:#eee8fb;
@@ -173,8 +173,11 @@ ul.items.flagged li{display:block;border-top:0;border-left:3px solid var(--bc);p
 
 
 def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubric.ScoredItem], is_series: bool,
-              background: Optional[str] = None, show_text: bool = True) -> str:
-    """show_text=False lists scene counts per level and links to IMDb instead of showing its descriptions."""
+              background: Optional[str] = None, show_text: bool = True, problem: Optional[str] = None,
+              keys_page: bool = False) -> str:
+    """show_text=False lists scene counts per level and links to IMDb instead of showing its descriptions.
+    problem: why the AI couldn't score this yet (classify.BUSY, LIMIT, …). keys_page: on a public copy, invite
+    viewers without a key to add one."""
     guide = entry["guide"]
     year = f" ({guide['year']})" if guide.get("year") else ""
     lvl = result.level
@@ -187,7 +190,7 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
         pills = ['<span class="pill accent">Your Score</span>',
                  f'<span class="pill">AI Said {escape(result.override["ai_shown"])}</span>']
     else:
-        pills = ['<span class="pill accent">' + ("AI Score" if classify.is_ai(entry["classifier"]) else "Keyword Estimate") + "</span>"]
+        pills = ['<span class="pill accent">' + ("AI Score" if classify.is_ai(entry["classifier"]) else "Based on Keywords") + "</span>"]
     if result.star:
         pills.append('<span class="pill">* Non-Sexual Nudity</span>')
     if lvl is not None:
@@ -269,6 +272,14 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
         summary_html = f"""<div class="card warning"><h3>⚠️ Content warning</h3><p><b>{escape(rubric.warning_text(result))}</b>.
 It's flagged for awareness and doesn't change the score. The items are marked below.</p></div>""" + summary_html
     summary_html += _why(result, show_text)
+    if problem:
+        summary_html = (f'<div class="card notice"><h3>⚠️ {escape(classify.PROBLEM_LABELS[problem])}</h3>'
+                        f'<p style="margin:0">{escape(classify.PROBLEM_TEXT[problem])} Until then, this score is based '
+                        f'on keywords in IMDb\'s scene descriptions, which is quicker but rougher.</p></div>') + summary_html
+    elif keys_page and not ai and result.level is not None:
+        summary_html += ('<div class="card notice"><p style="margin:0">This score is based on keywords. For a more '
+                         'accurate AI score, add your own free AI key: <a href="/keys">How to Get a Free Key</a>, then '
+                         'reinstall from the <a href="/configure">configure page</a>.</p></div>')
     title_link = f"stremio:///detail/{'series' if is_series else 'movie'}/{imdb_id}"
     back = f"""<a class="back" id="back" href="{escape(title_link)}">← Back to Stremio</a>
 <script>
@@ -371,10 +382,166 @@ transition:transform .15s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
 .toggle input:checked+.switch{background:var(--accent)}
 .toggle input:checked+.switch::after{transform:translateX(18px)}
 .toggle input:focus-visible+.switch{outline:2px solid var(--accent);outline-offset:2px}
+.field{display:block;margin:0 0 12px}.field>span{display:block;font-weight:600;font-size:.92rem;margin-bottom:5px}
+.field input,.field select{width:100%;font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--line);
+background:var(--bg);color:var(--text)}
+.field small{display:block;color:var(--muted);margin-top:5px}
+.keystatus{margin:0 0 14px;padding:10px 12px;border-radius:10px;font-size:.92rem;display:none}
+.keystatus.ok{display:block;background:rgba(47,154,90,.12);color:var(--green)}
+.keystatus.bad{display:block;background:rgba(196,59,59,.12);color:var(--red)}
+.keystatus.busy{display:block;background:var(--accent-soft);color:var(--accent)}
+details.section{border:1px solid var(--line);border-radius:14px;padding:0 16px;margin:0 0 18px}
+details.section>summary{cursor:pointer;list-style:none;padding:14px 0;display:flex;align-items:center;gap:10px}
+details.section>summary::-webkit-details-marker{display:none}
+details.section>summary::after{content:"▾";margin-left:auto;color:var(--muted);transition:transform .15s}
+details.section[open]>summary::after{transform:rotate(180deg)}
+details.section>summary b{display:block}
+details.section>summary small{display:block;color:var(--muted);font-weight:400}
+details.section[open]{padding-bottom:6px}
+details.adv{margin:0 0 12px}details.adv>summary{cursor:pointer;color:var(--accent);font-size:.9rem;font-weight:600}
+details.adv[open]>summary{margin-bottom:10px}
+.fine{font-size:.82rem;color:var(--muted);margin:0 0 12px}
 """
 
 
-def configure(base_url: str, version: str, ai_on: bool = True) -> str:
+def _key_section() -> str:
+    """The public copy's AI section: pick a service, paste a key, test it. The key is sealed into the install link."""
+    options = "".join(f'<option value="{escape(p["id"])}">{escape(p["name"])}'
+                      f'{" · " + escape(p["titles"]) if p["titles"] else ""}</option>'
+                      for p in providers.PROVIDERS + [providers.CUSTOM])
+    return f"""<h3>Install</h3>
+<label class="toggle"><input type="checkbox" id="ai"><span class="switch"></span>
+<span><b>Use AI Scores</b><br><small>An AI model reads every scene description in context, the way a person would:
+it tells a joke about something from actually seeing it, implied from shown, and clothing from nudity, then double-checks
+the scene that sets the score. Off, scores come from keyword matching: instant, but literal. Uses your own free AI key;
+paste one below and this switches on by itself.</small></span></label>
+<details class="section" id="aisection"><summary><span><b>🔑 Your AI Key</b>
+<small>Free, takes about two minutes</small></span></summary>
+<p class="muted" style="margin:0 0 14px">Your key is locked inside your install link and only used to score titles you
+open. <a href="/keys" target="_blank" rel="noopener">How to Get a Free Key ↗</a></p>
+<label class="field"><span>AI Service</span><select id="provider">{options}</select><small id="blurb"></small></label>
+<label class="field" id="basefield" style="display:none"><span>Service Address</span>
+<input id="base" type="url" placeholder="https://…/v1" autocomplete="off" spellcheck="false"></label>
+<label class="field"><span>Your Key</span>
+<input id="key" type="password" placeholder="Paste your key here" autocomplete="off" spellcheck="false"></label>
+<details class="adv" id="adv"><summary>Advanced: Choose a Model</summary>
+<label class="field"><span>Model</span><input id="model" list="models" autocomplete="off" spellcheck="false">
+<datalist id="models"></datalist><small>Leave this as it is unless you know you want another model. With the one
+picked for you, Couch Check moves on to the service's next free model when it runs out for the day.</small></label></details>
+<div class="actions"><button class="btn2" id="test" type="button">Test Key</button></div>
+<div class="keystatus" id="keystatus"></div></details>"""
+
+
+_KEY_SCRIPT = """
+var PROVIDERS = %s, sealed = null, sealedFor = "";
+var $ = function (id) { return document.getElementById(id); };
+function current() { return PROVIDERS.filter(function (p) { return p.id === $("provider").value; })[0]; }
+function details() {
+  var p = current();
+  return {base_url: p.id === "custom" ? $("base").value.trim() : p.base_url, key: $("key").value.trim(), model: $("model").value.trim()};
+}
+function signature() { var d = details(); return d.base_url + "\\n" + d.key + "\\n" + d.model; }
+function useKey() { return $("ai").checked && !!$("key").value.trim(); }
+function status(kind, text) { var s = $("keystatus"); s.className = "keystatus " + kind; s.textContent = text; }
+function setLink(prefix) {
+  var manifest = BASE + (prefix || "") + "/manifest.json";
+  $("manifest").textContent = manifest;
+  $("install").href = "stremio://" + manifest.split("://")[1];
+  $("installweb").href = "https://web.stremio.com/#/addons?addon=" + encodeURIComponent(manifest);
+}
+function pickProvider() {
+  var p = current();
+  $("blurb").textContent = p.blurb || "";
+  $("basefield").style.display = p.id === "custom" ? "" : "none";
+  $("adv").open = p.id === "custom";
+  $("models").innerHTML = p.models.filter(Boolean).map(function (m) { return '<option value="' + m + '">'; }).join("");
+  $("model").value = p.models[0] || "";
+  changed();
+}
+function changed() {
+  if (!$("ai").checked) { setLink(""); status("", ""); return; }
+  if (sealed && signature() === sealedFor) { setLink(sealed); return; }
+  sealed = null; sealedFor = ""; setLink("");
+  if (!$("key").value.trim()) {
+    $("aisection").open = true;
+    status("busy", "Paste your free AI key to turn on AI scores. Until then, scores are based on keywords.");
+  } else status("busy", "Click Test Key, or Install: the key is checked first.");
+}
+function test(then) {
+  if (!useKey()) { setLink(""); if (then) then(); return; }
+  if (sealed && signature() === sealedFor) { if (then) then(); return; }
+  var sig = signature();
+  status("busy", "Checking your key…");
+  fetch("/configure/key", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(details())})
+    .then(function (r) { return r.json(); })
+    .then(function (a) {
+      if (!a.ok) { $("aisection").open = true; status("bad", "❌ " + a.problem + ": " + a.message); return; }
+      sealed = a.prefix; sealedFor = sig; setLink(a.prefix);
+      status("ok", a.note ? "✅ Key Accepted. " + a.note : "✅ Key Works. Your install link now includes it.");
+      if (then) then();
+    })
+    .catch(function () { $("aisection").open = true; status("bad", "❌ Couldn't reach Couch Check. Try again."); });
+}
+$("provider").addEventListener("change", pickProvider);
+$("key").addEventListener("input", function () { if (this.value.trim()) $("ai").checked = true; });
+["key", "model", "base"].forEach(function (id) { $(id).addEventListener("input", changed); });
+$("ai").addEventListener("change", changed);
+$("test").addEventListener("click", function () { test(); });
+window.couchCheckKeyReady = function (then) { test(then); };
+["install", "installweb"].forEach(function (id) {
+  $(id).addEventListener("click", function (e) {
+    if (!useKey() || (sealed && signature() === sealedFor)) return;
+    e.preventDefault();
+    var web = id === "installweb";
+    test(function () { if (web) window.open($(id).href, "_blank"); else location.href = $(id).href; });
+  });
+});
+pickProvider();
+"""
+
+
+# Stremio's own API, as the community addon managers use it. It accepts calls from any web page, so the viewer's
+# email and password go from their browser straight to Stremio; Couch Check's server never sees them.
+_TOP_SCRIPT = """
+(function () {
+  var el = function (id) { return document.getElementById(id); };
+  function say(kind, text) { var s = el("topstatus"); s.className = "keystatus " + kind; s.textContent = text; }
+  function api(method, body) {
+    return fetch("https://api.strem.io/api/" + method, {method: "POST", headers: {"Content-Type": "application/json"},
+                                                         body: JSON.stringify(body)})
+      .then(function (r) { return r.json(); })
+      .then(function (a) { if (a.error || !a.result) throw new Error((a.error && a.error.message) || "Stremio didn't answer"); return a.result; });
+  }
+  function ready(then) { if (window.couchCheckKeyReady) window.couchCheckKeyReady(then); else then(); }
+  el("totop").addEventListener("click", function () {
+    var email = el("semail").value.trim(), password = el("spass").value, btn = this, authKey = null;
+    if (!email || !password) { say("bad", "❌ Enter your Stremio email and password."); return; }
+    ready(function () {
+      var url = el("manifest").textContent.trim();
+      if (url.indexOf("https://") !== 0) { say("bad", "❌ Stremio only installs addons from https addresses."); return; }
+      btn.disabled = true; say("busy", "Signing in to Stremio…");
+      var manifest;
+      fetch(url).then(function (r) { return r.json(); })
+        .then(function (m) { manifest = m; return api("login", {type: "Login", email: email, password: password, facebook: false}); })
+        .then(function (r) { authKey = r.authKey; say("busy", "Updating your addon list…");
+                             return api("addonCollectionGet", {type: "AddonCollectionGet", authKey: authKey, update: true}); })
+        .then(function (r) {
+          var addons = (r.addons || []).filter(function (a) { return !(a.manifest && a.manifest.id === manifest.id); });
+          addons.unshift({transportUrl: url, transportName: "http", manifest: manifest, flags: {}});
+          return api("addonCollectionSet", {type: "AddonCollectionSet", authKey: authKey, addons: addons});
+        })
+        .then(function () { el("spass").value = "";
+          say("ok", "✅ Done. Couch Check is at the top of your addons. Restart Stremio (or reload Stremio Web) to see it."); })
+        .catch(function (e) { say("bad", "❌ " + (/passphrase|password|user/i.test(e.message) ? "Wrong email or password." : e.message)); })
+        .then(function () { btn.disabled = false; if (authKey) api("logout", {type: "Logout", authKey: authKey}).catch(function () {}); });
+    });
+  });
+})();
+"""
+
+
+def configure(base_url: str, version: str, ai_on: bool = True, user_keys: bool = False) -> str:
+    """user_keys: a public copy, where viewers bring their own AI key (pg/userkeys.py) instead of the AI toggle."""
     manifest = f"{base_url}{'' if ai_on else '/est'}/manifest.json"
     secure = base_url.startswith("https://")
     # stremio:// links are always opened as https:// on the default port, so they only work for https installs.
@@ -397,32 +564,52 @@ Every score links to the scene-by-scene list it came from, so you can always che
 5 Scenes
 Tap: Full List in Browser ↗</div></div><div class="cap">In every episode's and movie's stream list.</div></div>
 </div></div>
-<div class="card"><h3>Install</h3>
+<div class="card">{_key_section() if user_keys else f"""<h3>Install</h3>
 <label class="toggle"><input type="checkbox" id="ai"{" checked" if ai_on else ""}><span class="switch"></span>
-<span><b>Use AI scores</b><br><small>An AI reads every scene description and places it on the scale.
-Turn off to see only the quick keyword estimate.</small></span></label>
+<span><b>Use AI Scores</b><br><small>An AI model reads every scene description in context, the way a person would:
+it tells a joke about something from actually seeing it, implied from shown, and clothing from nudity, then double-checks
+the scene that sets the score. Turn off for instant keyword matching only.</small></span></label>"""}
 <div class="actions">
 <a class="btn" id="install" href="{escape(stremio)}">Install in Stremio</a>
 <a class="btn2" id="installweb" href="{escape(web)}" target="_blank" rel="noopener">Install on Stremio Web</a>
 <button class="btn2" id="copy" type="button">Copy link</button></div>
 <code id="manifest">{escape(manifest)}</code>
-<h3 style="margin-top:20px">For the main-screen chip</h3>
-<ol class="steps"><li>Open a community addon manager (search "Stremio Addon Manager").</li>
+<details class="section" id="topsection" style="margin-top:20px"><summary><span><b>⬆️ Install at the Top (Recommended)</b>
+<small>Needed for the score on each title's main screen</small></span></summary>
+<p class="muted" style="margin:0 0 14px">The score only shows on a title's main screen when Couch Check sits above
+<b>Cinemeta</b> in your addon list, and the Stremio app can't reorder addons. Sign in with your Stremio account and
+Couch Check is installed straight at the top of your list (any older Couch Check install is replaced).</p>
+<label class="field"><span>Stremio Email</span><input id="semail" type="email" autocomplete="username" spellcheck="false"></label>
+<label class="field"><span>Stremio Password</span><input id="spass" type="password" autocomplete="current-password"></label>
+<p class="fine">Your email and password go straight from this page to Stremio. They're never sent to Couch Check or
+kept anywhere, and you're signed out of this session as soon as it's done. Signed in to Stremio with Facebook, Google
+or Apple? That has no password here, so use the steps below.</p>
+<div class="actions"><button class="btn" id="totop" type="button">Install at the Top</button></div>
+<div class="keystatus" id="topstatus"></div>
+<details class="adv"><summary>Or Do It by Hand</summary>
+<ol class="steps"><li>Install with the button above.</li>
+<li>Open a community addon manager (search "Stremio Addon Manager").</li>
 <li>Drag <b>Couch Check</b> above <b>Cinemeta</b> and sync.</li>
-<li>Restart Stremio. The stream-list row works without this step.</li></ol></div>
+<li>Restart Stremio. The stream-list row works without this step.</li></ol></details></details></div>
 <div class="card"><h3>The scale</h3><div class="levels">{levels}</div>{_ladder_table()}</div>
-<div class="card"><h3>Where scores come from</h3><p style="margin:0">Scene descriptions come from IMDb's parents guide.
-An AI reads each one and places it on the scale (<b>AI</b>). Until a title has been read, it shows a quick keyword
-<b>Estimate</b>. Only sex and nudity are scored: violence, language and the rest are ignored.</p></div>
+<div class="card"><h3>Where scores come from</h3><p style="margin:0">Every title has a list of scene descriptions.
+An AI model reads each one in context, places it on the 0–10 scale against a written rubric, and re-checks the scene that
+sets the title's score; those scores are marked <b>AI</b>. Until a title has been read, it shows a quicker,
+rougher score based on keywords, with no label. If the AI can't answer (for example, a free key has run out for the day),
+the score says why, such as <b>AI Limit Reached</b>. Only sex and nudity are scored: violence, language and the rest
+are ignored.</p></div>
 <p class="foot">Couch Check v{escape(version)}</p>
 <script>
 var BASE = {json.dumps(base_url)};
-document.getElementById("ai").addEventListener("change", function () {{
+{_KEY_SCRIPT % json.dumps([{k: p[k] for k in ("id", "base_url", "models", "blurb")}
+                             for p in providers.PROVIDERS + [providers.CUSTOM]]) if user_keys else ""}
+if (!{json.dumps(user_keys)}) document.getElementById("ai").addEventListener("change", function () {{
   var manifest = BASE + (this.checked ? "" : "/est") + "/manifest.json";
   document.getElementById("manifest").textContent = manifest;
   document.getElementById("install").href = "stremio://" + manifest.split("://")[1];
   document.getElementById("installweb").href = "https://web.stremio.com/#/addons?addon=" + encodeURIComponent(manifest);
 }});
+{_TOP_SCRIPT}
 document.getElementById("copy").addEventListener("click", function () {{
   var url = document.getElementById("manifest").textContent, btn = this;
   function done() {{ btn.textContent = "Copied"; setTimeout(function () {{ btn.textContent = "Copy link"; }}, 1500); }}
@@ -432,3 +619,41 @@ document.getElementById("copy").addEventListener("click", function () {{
 }});
 </script>"""
     return _doc("Couch Check", body, extra_css=CONFIGURE_CSS)
+
+
+KEYS_CSS = """
+.prov h2{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.prov .pill.accent{font-size:.78rem}
+.prov ol{margin:10px 0 0;padding-left:22px}.prov ol li{margin:7px 0}
+.prov .note{margin:12px 0 0;font-size:.88rem;color:var(--muted)}
+.best{border:2px solid var(--accent)}
+"""
+
+
+def keys_guide() -> str:
+    """Step-by-step: get a free AI key and add it to Couch Check (public copies)."""
+    cards = []
+    for i, p in enumerate(providers.PROVIDERS):
+        steps = "".join(f"<li>{step}</li>" for step in p["steps"])  # our own text, with links
+        cards.append(f"""<div class="card prov{" best" if i == 0 else ""}"><h2>{escape(p["name"])}
+<span class="pill accent">{escape(p["titles"])}</span></h2><p class="sub">{escape(p["blurb"])}</p>
+<ol>{steps}<li>Back on the <a href="/configure">configure page</a>, choose <b>{escape(p["name"])}</b>, paste the key,
+click <b>Test Key</b>, then <b>Install</b>.</li></ol><p class="note">{escape(p["notes"])}</p></div>""")
+    body = f"""<h1>Get a Free AI Key</h1>
+<p class="sub" style="margin-bottom:18px">Couch Check works without one: scores are then based on keywords in IMDb's
+scene descriptions. With a free AI key, an AI reads each description and scores it more accurately. It takes about
+two minutes, and none of these need a card.</p>
+<div class="card notice"><b>Which one?</b> Start with <b>Groq</b>: it's what Couch Check is tuned on. If you watch a
+lot of new titles, <b>Google Gemini</b> gives the most free titles a day. A title is only scored once by anyone using
+this copy, so popular titles usually need no AI calls at all.</div>
+{"".join(cards)}
+<div class="card"><h3>When a free key runs out</h3><p style="margin:0">Free plans have a daily limit. When yours is
+reached, new titles show a keyword score marked <b>AI Limit Reached</b>, and AI scores come back on their own when the
+limit resets, usually within a day. Titles already scored keep their AI score. You'll never be charged: none of these
+plans have a card on file.</p></div>
+<div class="card"><h3>Is my key safe?</h3><p style="margin:0">Your key is locked (encrypted) inside your personal
+install link, so it can't be read from the link. Couch Check doesn't store it, and only uses it to score titles you
+open. Anyone with your install link could use your free allowance, so don't share it. To stop using a key, delete it
+in your AI service's dashboard.</p></div>
+<p class="foot"><a href="/configure">← Back to the configure page</a></p>"""
+    return _doc("Get a Free AI Key · Couch Check", body, extra_css=KEYS_CSS)

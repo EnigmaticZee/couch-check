@@ -27,7 +27,7 @@ def _load_env_file(path: Path) -> None:
 
 _load_env_file(Path(__file__).parent / ".env")
 
-from pg import cinemeta, classify, overrides, pages, rubric, scores  # noqa: E402  (reads settings from the environment at import)
+from pg import cinemeta, classify, overrides, pages, providers, rubric, scores, userkeys  # noqa: E402  (reads settings from the environment at import)
 from pg.service import Service, score
 from pg.store import Store
 from experimental import hooks as experiments  # off unless switched on in the environment; see experimental/
@@ -56,6 +56,9 @@ MANIFEST = {
     "catalogs": [],
     "behaviorHints": {"configurable": True},
 }
+if userkeys.ENABLED:
+    # A public copy gets its own ID, so it can be installed next to a personal copy without clashing.
+    MANIFEST = {**MANIFEST, "id": "community.couchcheck.public"}
 
 STREAM_PATH = re.compile(r"^/stream/(movie|series)/(tt\d+)(?::\d+:\d+)?\.json$")
 META_PATH = re.compile(r"^/meta/(movie|series)/(tt\d+)\.json$")
@@ -75,6 +78,8 @@ STATIC_FILES = {
     "/favicon.ico": (STATIC_DIR / "logo.png", "image/png"),
 }
 EST_SEGMENT = "/est"  # install-link setting: AI scores off, keyword estimates only
+KEY_SEGMENT = re.compile(r"^/k/([A-Za-z0-9_-]{20,2000})(?=/)")  # install-link setting: the viewer's own AI key (public copies)
+LOG_TOKEN = re.compile(r"/k/[A-Za-z0-9_-]+")
 HTTP_CACHE_MAX = 300  # Stremio's webview keeps responses on disk; cap how long it may reuse one
 
 log = logging.getLogger("pg")
@@ -97,12 +102,13 @@ def stream_row(imdb_id: str, kind: str, base: str) -> tuple:
         return {"name": "❔ Couch Check", "description": "No IMDb parents guide for this title.", "externalUrl": url}, 86400
 
     result, _ = scored(imdb_id, entry)
+    source = source_label(entry)
     if result.level is None:
         lines = ["No scene details on IMDb"]
     elif result.override:
         lines = [f"{rubric.name(result.level)} · Your Score", f"AI Said {result.override['ai_shown']}"]
     else:
-        lines = [f"{rubric.name(result.level)} · {'AI Score' if source_label(entry) == 'AI' else 'Estimate'}"]
+        lines = [rubric.name(result.level) + (" · AI Score" if source == "AI" else "")]
     if result.level is not None:
         detail = f"{result.scenes} Scene{'s' if result.scenes != 1 else ''}"
         if result.prolonged:
@@ -119,6 +125,8 @@ def stream_row(imdb_id: str, kind: str, base: str) -> tuple:
         extras.append("Low Confidence")
     if extras:
         lines.append(" · ".join(extras))
+    if result.level is not None and source not in ("", "AI"):
+        lines.append(f"⚠️ {source}")  # why the AI didn't score it, e.g. "AI Limit Reached"
     lines.append("Tap: Full List in Browser ↗")
     return {
         "name": f"{rubric.emoji(result.level)} {result.shown}",
@@ -148,7 +156,8 @@ def meta_with_score(imdb_id: str, kind: str, base: str) -> tuple:
             label = f"{rubric.emoji(result.level)} {result.shown} · {rubric.name(result.level)}"
             if result.scenes:
                 label += f" · {result.scenes} Scene{'s' if result.scenes != 1 else ''}"
-            label += f" · {source_label(entry)}"
+            if source_label(entry):
+                label += f" · {source_label(entry)}"
             if result.warnings:
                 label += " · ⚠️"
         max_age = META_CACHE
@@ -160,7 +169,8 @@ def meta_with_score(imdb_id: str, kind: str, base: str) -> tuple:
     return {**meta, "links": links[:at] + [chip] + links[at:]}, max_age
 
 
-# Per-request setting from the install link: /est/ in the path means the viewer turned AI scores off.
+# Per-request settings from the install link: /est/ in the path means the viewer turned AI scores off, and
+# /k/<token>/ carries the viewer's own AI key on a public copy (pg/userkeys.py).
 REQUEST = threading.local()
 
 
@@ -168,17 +178,38 @@ def ai_wanted() -> bool:
     return getattr(REQUEST, "use_ai", True)
 
 
+def viewer_routes():
+    """The viewer's own AI key as routes, or None to use the server's keys."""
+    return getattr(REQUEST, "routes", None)
+
+
+def link_prefix() -> str:
+    """The part of the install link that carries the viewer's settings, so links to the web page keep them."""
+    return getattr(REQUEST, "prefix", "")
+
+
 def lookup(imdb_id: str, wait: float):
     """The title's entry for this viewer: AI score if they want it, otherwise the keyword estimate."""
     if ai_wanted():
-        return service.lookup(imdb_id, wait)
+        return service.lookup(imdb_id, wait, viewer_routes())
     return service.lookup_estimate(imdb_id, wait)
 
 
+def ai_problem(entry: dict):
+    """Why this keyword score isn't an AI score yet, when the viewer's AI can't answer right now (classify.BUSY,
+    LIMIT, …), or None: the score is already AI, the viewer has no AI, or the AI simply hasn't finished."""
+    if not ai_wanted() or classify.is_ai(entry["classifier"]) or not entry["guide"].get("items"):
+        return None
+    routes = viewer_routes()
+    return classify.problem(classify.server_routes() if routes is None else routes)
+
+
 def scored(imdb_id: str, entry: dict) -> tuple:
-    """score() with the owner's override (data/overrides.json) applied. Returns (result, items)."""
+    """score() with the owner's override (data/overrides.json) applied. Returns (result, items).
+
+    Public copies skip overrides: "Your Score" there would be the owner's, not the viewer's."""
     result, items = score(entry)
-    return overrides.apply(imdb_id, result), items
+    return (result if userkeys.ENABLED else overrides.apply(imdb_id, result)), items
 
 
 def why_text(result: rubric.Result) -> str:
@@ -193,8 +224,11 @@ def why_text(result: rubric.Result) -> str:
 
 
 def source_label(entry: dict) -> str:
-    """'AI' when an AI model scored the title, 'Est.' for the keyword estimate."""
-    return "AI" if classify.is_ai(entry["classifier"]) else "Est."
+    """'AI' when an AI model scored the title. Keyword scores have no label, unless the AI couldn't answer, which
+    says why ('AI Limit Reached', …)."""
+    if classify.is_ai(entry["classifier"]):
+        return "AI"
+    return classify.PROBLEM_LABELS.get(ai_problem(entry), "")
 
 
 def in_app_url(imdb_id: str) -> str:
@@ -203,7 +237,7 @@ def in_app_url(imdb_id: str) -> str:
 
 def web_url(base: str, imdb_id: str, is_series: bool) -> str:
     query = [q for q, on in (("series=1", is_series), ("est=1", not ai_wanted())) if on]
-    return f"{base}/guide/{imdb_id}" + ("?" + "&".join(query) if query else "")
+    return f"{base}{link_prefix()}/guide/{imdb_id}" + ("?" + "&".join(query) if query else "")
 
 
 def breakdown_meta(imdb_id: str, base: str) -> tuple:
@@ -237,9 +271,9 @@ def breakdown_meta(imdb_id: str, base: str) -> tuple:
         meta["releaseInfo"] = "❔ No scene details"
         meta["description"] = "IMDb has no flagged Sex & Nudity items for this title yet."
     else:
-        meta["releaseInfo"] = (f"{rubric.emoji(result.level)} {result.shown} · {rubric.name(result.level)} · "
-                               + ("Your Score" if result.override else source_label(entry))
-                               + (" · ⚠️" if result.warnings else ""))
+        meta["releaseInfo"] = " · ".join(x for x in (
+            f"{rubric.emoji(result.level)} {result.shown}", rubric.name(result.level),
+            "Your Score" if result.override else source_label(entry), "⚠️" if result.warnings else "") if x)
         facts = [f"{result.scenes} scene{'s' if result.scenes != 1 else ''} at level {rubric.SCENE_THRESHOLD}+"]
         if result.prolonged:
             facts.append(f"{result.prolonged} prolonged")
@@ -248,7 +282,8 @@ def breakdown_meta(imdb_id: str, base: str) -> tuple:
         if result.low_confidence:
             facts.append("low confidence")
         facts.append("scored by AI" if source_label(entry) == "AI"
-                     else "keyword estimate" + ("" if ai_wanted() else " (AI scores turned off)"))
+                     else "based on keywords" + ("" if ai_wanted() else " (AI scores turned off)"))
+        problem = ai_problem(entry)
         summary = entry.get("summary") if classify.is_ai(entry["classifier"]) else None
         warning = (f"⚠️ Content warning: {rubric.warning_text(result)} (flagged for awareness; it doesn't change the score). "
                    if result.warnings else "")
@@ -257,8 +292,10 @@ def breakdown_meta(imdb_id: str, base: str) -> tuple:
         if result.override:
             why = (f"Your score: {result.level}/10" + (f" ({result.override['note']})" if result.override["note"] else "")
                    + f"; the AI said {result.override['ai_shown']}. ")
+        problem_text = (f"⚠️ {classify.PROBLEM_LABELS[problem]}: {classify.PROBLEM_TEXT[problem]} "
+                        "Until then, this score is based on keywords. " if problem else "")
         meta["description"] = (
-            warning + why + f"{summary or rubric.auto_summary(result, items)} "
+            problem_text + warning + why + f"{summary or rubric.auto_summary(result, items)} "
             f"{(lambda t: t[:1].upper() + t[1:])(' · '.join(facts))}. "
             + ("Every flagged scene is listed on the right, most explicit first. " if SCENE_TEXT
                else "Scene counts by level are on the right; the scene descriptions are on IMDb. ")
@@ -335,6 +372,33 @@ def level_rows(imdb_id: str, items: list) -> list:
     return rows
 
 
+def key_link(form: dict) -> dict:
+    """For the configure page: checks a viewer's AI key with one tiny call and seals it for their install link.
+
+    Returns {"ok": True, "prefix": "/k/<token>"} or {"ok": False, "problem": label, "message": what to do}.
+    The key is checked here, never stored; only the sealed token leaves the server.
+    """
+    key = str(form.get("key") or "").strip()
+    model = str(form.get("model") or "").strip()
+    base_url = userkeys.safe_base_url(str(form.get("base_url") or ""))
+    if not key or not model or len(key) > 500 or len(model) > 200:
+        return {"ok": False, "problem": "Missing Details", "message": "Paste your key, and pick or type a model."}
+    if not base_url:
+        return {"ok": False, "problem": "Address Not Allowed",
+                "message": "The AI service address must start with https:// and be on the public internet."}
+    problem = classify.check(base_url, key, model)
+    here = {classify.KEY: "The AI service didn't accept this key. Check you copied all of it, and that it's for the "
+                          "service picked above.",
+            classify.MODEL: "This service doesn't offer that model. Pick one from the list.",
+            classify.DOWN: "The AI service didn't answer. Check the address, or try again in a minute."}
+    if problem in here:
+        return {"ok": False, "problem": classify.PROBLEM_LABELS[problem], "message": here[problem]}
+    answer = {"ok": True, "prefix": f"/k/{userkeys.seal({'base_url': base_url, 'key': key, 'model': model})}"}
+    if problem:  # BUSY or LIMIT: the key is real, it's just resting; install it anyway
+        answer["note"] = f"{classify.PROBLEM_LABELS[problem]}: {classify.PROBLEM_TEXT[problem]}"
+    return answer
+
+
 class Handler(BaseHTTPRequestHandler):
     def base_url(self) -> str:
         if PUBLIC_URL:
@@ -375,6 +439,17 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         raw_path, _, query = self.path.partition("?")
         path = unquote(raw_path)  # Stremio sends episode IDs as tt123%3A1%3A2
+        REQUEST.routes, REQUEST.prefix = None, ""
+        m = KEY_SEGMENT.match(path) if userkeys.ENABLED else None
+        if m:
+            settings = userkeys.unseal(m.group(1))
+            path = path[m.end():]
+            if settings:
+                REQUEST.routes = classify.viewer_routes(
+                    settings["base_url"], settings["key"], providers.models_for(settings["base_url"], settings["model"]))
+                REQUEST.prefix = m.group(0)
+            else:
+                REQUEST.routes = []  # a link whose key can't be read (e.g. the server's secret changed): keywords only
         REQUEST.use_ai = not (path.startswith(EST_SEGMENT + "/") or "est=1" in query)
         if path.startswith(EST_SEGMENT + "/"):
             path = path[len(EST_SEGMENT):]
@@ -386,7 +461,10 @@ class Handler(BaseHTTPRequestHandler):
             file, content_type = STATIC_FILES[path]
             return self.send(200, file.read_bytes(), content_type, cache=86400)
         if path in ("/", "/configure"):
-            return self.send_html(experiments.configure(pages.configure(self.base_url(), MANIFEST["version"], ai_wanted())))
+            return self.send_html(experiments.configure(pages.configure(
+                self.base_url(), MANIFEST["version"], ai_wanted(), userkeys.ready())))
+        if path == "/keys" and userkeys.ENABLED:
+            return self.send_html(pages.keys_guide())
         if experiments.handle(self, path, query, ai_wanted(), SCENE_TEXT):
             return
 
@@ -429,6 +507,16 @@ class Handler(BaseHTTPRequestHandler):
 
         self.send(404, "Not found", "text/plain")
 
+    def do_POST(self) -> None:
+        if self.path != "/configure/key" or not userkeys.ready():
+            return self.send(404, "Not found", "text/plain")
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+            form = json.loads(self.rfile.read(min(length, 4000)) or b"{}")
+        except ValueError:
+            form = {}
+        self.send_json(key_link(form if isinstance(form, dict) else {}))
+
     def export_scores(self) -> None:
         """This server's AI scores in data/scores.json format (item levels and summaries, no IMDb text)."""
         sent = self.headers.get("Authorization", "")
@@ -448,16 +536,21 @@ class Handler(BaseHTTPRequestHandler):
         result, items = scored(imdb_id, entry)
         is_series = is_series or entry["guide"].get("type") in SERIES_TYPES
         art = cinemeta.meta("series" if is_series else "movie", imdb_id) or {}
-        self.send_html(pages.breakdown(imdb_id, entry, result, items, is_series, art.get("background"), SCENE_TEXT))
+        self.send_html(pages.breakdown(imdb_id, entry, result, items, is_series, art.get("background"), SCENE_TEXT,
+                                       ai_problem(entry), keys_page=userkeys.ENABLED and viewer_routes() is None))
 
     def log_message(self, fmt: str, *args) -> None:
-        log.info("%s %s", fmt % args, self.headers.get("User-Agent", "")[:40] if self.headers else "")
+        line = LOG_TOKEN.sub("/k/…", fmt % args)  # viewers' sealed keys stay out of the logs
+        log.info("%s %s", line, self.headers.get("User-Agent", "")[:40] if self.headers else "")
 
 
 def main() -> None:
     logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"), format="%(asctime)s %(name)s %(message)s")
     mode = classify.ai_label() if classify.ai_enabled() else "keyword matching (see README to enable AI scoring)"
     log.info("Classifier: %s", mode)
+    if userkeys.ENABLED:
+        log.info("Viewers' own AI keys: %s", "on" if userkeys.ready() else
+                 "OFF: set PG_CONFIG_SECRET to a random value of 32+ characters")
     log.info("Install in Stremio: http://localhost:%d/manifest.json", PORT)
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
 

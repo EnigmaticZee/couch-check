@@ -1,13 +1,15 @@
 """Assigns each IMDb Sex & Nudity item a level on the ladder.
 
 An AI model reads the free-text items when one is configured: any OpenAI-compatible
-API such as Groq's free tier (PG_AI_BASE_URL + PG_AI_API_KEY + PG_AI_MODEL).
+API such as Groq's free tier (PG_AI_BASE_URL + PG_AI_API_KEY + PG_AI_MODEL), or, on a public copy, the viewer's
+own key from their install link (pg/userkeys.py).
 When the main key or model hits its limit, an optional backup key (PG_AI_FALLBACK_KEY) and/or backup
 model (PG_AI_FALLBACK_MODEL) take over until it recovers. Otherwise, or when the AI is unavailable or over its limits, a keyword matcher
 gives a rougher estimate.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -32,12 +34,45 @@ AI_FALLBACK_KEY = os.environ.get("PG_AI_FALLBACK_KEY", "")
 AI_FALLBACK_MODEL = os.environ.get("PG_AI_FALLBACK_MODEL", "")
 
 
-class Route:
-    """One key + model the AI can be reached through, paused on its own when it hits a limit."""
+# Why the AI couldn't score, shown next to a keyword score so viewers know what happened (see PROBLEM_LABELS).
+BUSY, LIMIT, KEY, MODEL, DOWN = "busy", "limit", "key", "model", "down"
+PROBLEM_LABELS = {
+    BUSY: "AI Busy",
+    LIMIT: "AI Limit Reached",
+    KEY: "AI Key Invalid",
+    MODEL: "AI Model Not Found",
+    DOWN: "AI Unavailable",
+}
+PROBLEM_TEXT = {
+    BUSY: "The AI service asked Couch Check to slow down for a moment. AI scores resume within a minute or two.",
+    LIMIT: "The AI key has used up its allowance for now (free plans have a daily limit). AI scores come back "
+           "automatically when the limit resets, usually within a day.",
+    KEY: "The AI service didn't accept the key. Check it on the configure page and reinstall.",
+    MODEL: "The AI service doesn't offer that model any more. Pick another on the configure page and reinstall.",
+    DOWN: "The AI service didn't answer. Couch Check tries again in a few minutes.",
+}
+# How long a route rests after each problem when the service doesn't say (seconds).
+PROBLEM_PAUSE = {BUSY: 60, LIMIT: 900, KEY: 3600, MODEL: 3600, DOWN: 120}
+_DAILY = re.compile(r"per day|daily|\bTPD\b|\bRPD\b|quota|credits|billing|insufficient", re.I)
 
-    def __init__(self, name: str, key: str, model: str):
-        self.name, self.key, self.model = name, key, model
+
+class Route:
+    """One key + model the AI can be reached through, paused on its own when it hits a limit.
+
+    capped: the server's own keys (PG_AI_*), paced and capped by `limiter`. Viewers' own keys (pg/userkeys.py)
+    aren't capped: their AI service enforces its own limits, and a pause only ever affects that one key.
+    """
+
+    def __init__(self, name: str, key: str, model: str, base_url: str = AI_BASE_URL, capped: bool = True):
+        self.name, self.key, self.model, self.base_url, self.capped = name, key, model, base_url.rstrip("/"), capped
         self.paused_until = 0.0
+        self.problem: Optional[str] = None
+
+    def pause(self, seconds: float, problem: str) -> None:
+        self.paused_until, self.problem = time.time() + seconds, problem
+
+    def is_paused(self) -> bool:
+        return time.time() < self.paused_until
 
     def reasoning_effort(self) -> str:
         # Reasoning models (e.g. gpt-oss) think before answering, and that counts against token limits;
@@ -52,6 +87,37 @@ if AI_FALLBACK_MODEL:
     ROUTES.append(Route("backup model", AI_API_KEY, AI_FALLBACK_MODEL))
     if AI_FALLBACK_KEY:
         ROUTES.append(Route("backup key and model", AI_FALLBACK_KEY, AI_FALLBACK_MODEL))
+
+_viewer_routes: dict = {}
+_viewer_lock = threading.Lock()
+
+
+def viewer_routes(base_url: str, key: str, models: List[str]) -> List[Route]:
+    """The routes for a viewer's own key: one per model, tried in order (on Groq each model has its own free
+    allowance). The same key always gets the same Routes, so their pauses carry over between requests without
+    ever touching anyone else's."""
+    ident = hashlib.sha256("\n".join([base_url, key] + models).encode()).hexdigest()
+    with _viewer_lock:
+        if ident not in _viewer_routes:
+            if len(_viewer_routes) > 5000:  # forget old keys rather than grow forever
+                _viewer_routes.clear()
+            _viewer_routes[ident] = [Route("viewer key" + (f" ({m})" if i else ""), key, m, base_url, capped=False)
+                                     for i, m in enumerate(models)]
+        return _viewer_routes[ident]
+
+
+def server_routes() -> List[Route]:
+    """The server's own keys, or none when this copy has no AI key (or AI is switched off)."""
+    return ROUTES if provider() else []
+
+
+def problem(routes: List[Route]) -> Optional[str]:
+    """Why these routes can't score right now (BUSY, LIMIT, …), or None when one of them can."""
+    if not routes:
+        return None
+    if any(not r.is_paused() for r in routes):
+        return LIMIT if routes[0].capped and limiter.over_cap() else None
+    return routes[0].problem or LIMIT
 
 
 def provider() -> Optional[str]:
@@ -109,6 +175,15 @@ class Limiter:
     def pause(self, seconds: float) -> None:
         with self._lock:
             self._paused_until = max(self._paused_until, time.time() + seconds)
+
+    def over_cap(self) -> bool:
+        with self._lock:
+            return date.today() == self._day and self._count >= self.daily_limit
+
+
+def _acquire(routes: List[Route]) -> bool:
+    """A viewer's own key goes straight through; the server's keys wait their turn under `limiter`."""
+    return bool(routes) and (not routes[0].capped or limiter.acquire())
 
 
 limiter = Limiter(
@@ -168,15 +243,20 @@ def context(guide: dict) -> str:
     return f"Title: {' '.join(p for p in parts if p)}" + (f" · {details}" if details else "")
 
 
-def classify(texts: List[str], about: str = "") -> Tuple[List[dict], str, Optional[str]]:
-    """Returns ([{level, is_scene, prolonged}, ...] aligned with texts, classifier name, AI summary or None)."""
+def classify(texts: List[str], about: str = "", routes: Optional[List[Route]] = None
+             ) -> Tuple[List[dict], str, Optional[str]]:
+    """Returns ([{level, is_scene, prolonged}, ...] aligned with texts, classifier name, AI summary or None).
+
+    routes: a viewer's own key (viewer_routes); the server's keys when None.
+    """
     if not texts:
         return [], "none", None
-    if provider() and limiter.acquire():
-        result = _with_openai(texts, about)
+    routes = server_routes() if routes is None else routes
+    if _acquire(routes):
+        result = _with_openai(texts, about, routes)
         if result is not None:
             classified, summary, model = result
-            return _recheck_top(texts, classified, about), f"ai:{model}@{rubric.VERSION}", summary
+            return _recheck_top(texts, classified, about, routes), f"ai:{model}@{rubric.VERSION}", summary
     return keywords(texts), "keywords", None
 
 
@@ -281,17 +361,19 @@ def _clean(e: dict) -> dict:
             "warning": warning, "nonsexual": nonsexual, "shown": shown}
 
 
-def _recheck_top(texts: List[str], classified: List[dict], about: str = "") -> List[dict]:
+def _recheck_top(texts: List[str], classified: List[dict], about: str = "",
+                 routes: Optional[List[Route]] = None) -> List[dict]:
     """Asks again about the item that sets the title's level (if it's 4 or above) and uses that answer."""
     if not classified:
         return classified
+    routes = server_routes() if routes is None else routes
     top_level = max(c["level"] for c in classified)
-    if top_level < rubric.SCENE_THRESHOLD or not limiter.acquire():
+    if top_level < rubric.SCENE_THRESHOLD or not _acquire(routes):
         return classified
     i = sorted((i for i, c in enumerate(classified) if c["level"] == top_level),
                key=lambda i: not classified[i]["is_scene"])[0]
-    answer = (_chat(RECHECK, f"{about}\nItem: {json.dumps(texts[i], ensure_ascii=False)}\nGiven level: {top_level}".strip())
-              or (None,))[0]
+    answer = (_chat(RECHECK, f"{about}\nItem: {json.dumps(texts[i], ensure_ascii=False)}\nGiven level: {top_level}".strip(),
+                    routes) or (None,))[0]
     if not isinstance(answer, dict) or not isinstance(answer.get("level"), int) or not 0 <= answer["level"] <= 10:
         return classified
     fixed = _genre_nonsexual(texts[i], _vague_cap(texts[i], _clean({
@@ -303,23 +385,25 @@ def _recheck_top(texts: List[str], classified: List[dict], about: str = "") -> L
     return classified[:i] + [fixed] + classified[i + 1:]
 
 
-def _with_openai(texts: List[str], about: str = "") -> Optional[Tuple[List[dict], Optional[str], str]]:
+def _with_openai(texts: List[str], about: str = "", routes: Optional[List[Route]] = None
+                 ) -> Optional[Tuple[List[dict], Optional[str], str]]:
     """(items, summary, model that answered), or None."""
-    answer = _chat(SYSTEM + JSON_INSTRUCTION, f"{about}\nItems:\n{_numbered(texts)}".strip())
+    answer = _chat(SYSTEM + JSON_INSTRUCTION, f"{about}\nItems:\n{_numbered(texts)}".strip(), routes)
     if answer is None or not isinstance(answer[0], dict):
         return None
     parsed, model = answer
     return _align(texts, parsed.get("items"), about), _summary(parsed.get("summary")), model
 
 
-def _chat(system: str, user: str) -> Optional[Tuple[dict, str]]:
+def _chat(system: str, user: str, routes: Optional[List[Route]] = None) -> Optional[Tuple[dict, str]]:
     """One JSON chat call, through the first route that isn't paused: (answer, model) or None (the caller falls back).
 
-    A route that hits a limit is paused on its own and the next one is tried; only when every route is paused
-    does AI scoring pause as a whole.
+    A route that hits a limit is paused on its own and the next one is tried; only when every one of the server's
+    routes is paused does the server's AI scoring pause as a whole.
     """
-    for route in ROUTES:
-        if time.time() < route.paused_until:
+    routes = server_routes() if routes is None else routes
+    for route in routes:
+        if route.is_paused():
             continue
         outcome = _call(route, system, user)
         if outcome == "next":
@@ -327,10 +411,68 @@ def _chat(system: str, user: str) -> Optional[Tuple[dict, str]]:
         if outcome is None:
             return None
         return outcome, route.model
-    waits = [r.paused_until - time.time() for r in ROUTES]
-    if min(waits) > 0:
+    waits = [r.paused_until - time.time() for r in routes]
+    if waits and min(waits) > 0 and routes[0].capped:
         limiter.pause(min(waits))
     return None
+
+
+def check(base_url: str, key: str, model: str) -> Optional[str]:
+    """One tiny call to see whether a key and model work: None if they do, otherwise the problem (KEY, MODEL, …).
+    Used by the configure page's Test Key button; it doesn't pause anything."""
+    route = Route("key check", key, model, base_url, capped=False)
+    body = {"model": model, "messages": [{"role": "user", "content": 'Reply with {"ok": true}'}], "max_tokens": 200}
+    try:
+        _post(route, body, timeout=30)
+        return None
+    except _Problem as p:
+        return p.problem
+
+
+class _Problem(Exception):
+    def __init__(self, problem: str, seconds: float):
+        super().__init__(problem)
+        self.problem, self.seconds = problem, seconds
+
+
+def _post(route: Route, body: dict, timeout: float = 90) -> dict:
+    """POSTs a chat request through the route. Raises _Problem saying what went wrong."""
+    req = urllib.request.Request(
+        f"{route.base_url}/chat/completions",
+        data=json.dumps(body).encode(),
+        # Some providers (Groq, behind Cloudflare) reject Python's default User-Agent with a 403.
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {route.key}",
+                 "User-Agent": "couch-check/2.0"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.load(resp)
+    except urllib.error.HTTPError as e:
+        try:
+            detail = e.read(2000).decode("utf-8", "replace")
+        except OSError:
+            detail = ""
+        retry = e.headers.get("Retry-After") if e.headers else None
+        wait = float(retry) if retry and retry.replace(".", "", 1).isdigit() else None
+        if e.code == 429:
+            # Per-minute limits clear on their own; per-day limits and empty credit mean "out for now".
+            daily = (wait or 0) > 120 or bool(_DAILY.search(detail))
+            problem = LIMIT if daily else BUSY
+        elif e.code == 402:
+            problem = LIMIT
+        elif e.code in (401, 403):
+            problem = KEY
+        elif e.code == 404 or (e.code == 400 and re.search(r"model", detail, re.I)):
+            problem = MODEL
+        elif e.code >= 500:
+            problem = DOWN
+        else:
+            log.warning("AI provider error HTTP %d for the %s: %s", e.code, route.name, detail[:200])
+            raise _Problem(DOWN, 0)
+        raise _Problem(problem, wait if wait is not None else PROBLEM_PAUSE[problem])
+    except (urllib.error.URLError, OSError, ValueError) as e:
+        log.warning("Could not reach the AI provider for the %s (%s)", route.name, e)
+        raise _Problem(DOWN, PROBLEM_PAUSE[DOWN])
 
 
 def _call(route: Route, system: str, user: str):
@@ -346,32 +488,14 @@ def _call(route: Route, system: str, user: str):
     }
     if route.reasoning_effort():
         body["reasoning_effort"] = route.reasoning_effort()
-    req = urllib.request.Request(
-        f"{AI_BASE_URL}/chat/completions",
-        data=json.dumps(body).encode(),
-        # Some providers (Groq, behind Cloudflare) reject Python's default User-Agent with a 403.
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {route.key}",
-                 "User-Agent": "couch-check/2.0"},
-    )
     try:
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            data = json.load(resp)
-    except urllib.error.HTTPError as e:
-        if e.code == 429:
-            retry = e.headers.get("Retry-After")
-            seconds = float(retry) if retry and retry.replace(".", "", 1).isdigit() else 60
-            route.paused_until = time.time() + seconds
-            log.warning("AI %s (%s) rate limited; pausing it for %ds", route.name, route.model, seconds)
-            return "next"
-        if e.code in (401, 403):
-            route.paused_until = time.time() + 3600
-            log.error("AI provider rejected the %s (HTTP %d); pausing it for an hour", route.name, e.code)
-            return "next"
-        log.warning("AI provider error HTTP %d; using keyword matching", e.code)
-        return None
-    except (urllib.error.URLError, OSError, ValueError) as e:
-        log.warning("Could not reach AI provider (%s); using keyword matching", e)
-        return None
+        data = _post(route, body)
+    except _Problem as p:
+        if not p.seconds:
+            return None  # an odd one-off error: use keywords this time, try again next time
+        route.pause(p.seconds, p.problem)
+        log.warning("AI %s (%s): %s; pausing it for %ds", route.name, route.model, PROBLEM_LABELS[p.problem], p.seconds)
+        return None if p.problem == DOWN else "next"
 
     try:
         text = data["choices"][0]["message"]["content"] or ""

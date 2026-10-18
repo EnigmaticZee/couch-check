@@ -186,14 +186,14 @@ def _annotate_episodes(show_id: str, meta: dict, rubrics) -> Tuple[dict, bool]:
             if not found or found[0].level is None:
                 continue
             res, entry = found
-            src = "AI" if entry["classifier"].startswith("ai:") else "Est."
+            src = " · AI" if entry["classifier"].startswith("ai:") else ""  # keyword scores carry no label
             prefix = "ISCCI " if r == "iscci" and len(rubrics) > 1 else ""
             if r == "iscci":
-                labels.append(f"{prefix}{present.short(res)} · {src}")
+                labels.append(f"{prefix}{present.short(res)}{src}")
                 marks.append(f"{iscci.rubric.emoji(res.level)}{res.shown.split('/')[0]}")
             else:
                 from pg import rubric as base_rubric
-                labels.append(f"{base_rubric.emoji(res.level)} {res.level}/10 · {base_rubric.name(res.level)} · {src}")
+                labels.append(f"{base_rubric.emoji(res.level)} {res.level}/10 · {base_rubric.name(res.level)}{src}")
                 marks.append(f"{base_rubric.emoji(res.level)}{res.level}")
         if labels:
             line = " | ".join(labels)
@@ -245,8 +245,8 @@ def _episode_row(r: str, res, entry: dict, base: str, show_id: str, use_ai: bool
     if r == "iscci":
         return present.stream_row(res, entry, _web(base, show_id, True, use_ai), "This episode", "ISCCI" if both else "")
     from pg import rubric as base_rubric
-    src = "AI score" if entry["classifier"].startswith("ai:") else "Estimate"
-    lines = [f"{base_rubric.name(res.level)} · {src}", f"{res.scenes} scene{'s' if res.scenes != 1 else ''}",
+    src = " · AI Score" if entry["classifier"].startswith("ai:") else ""
+    lines = [f"{base_rubric.name(res.level)}{src}", f"{res.scenes} scene{'s' if res.scenes != 1 else ''}",
              "This episode", "Tap: full list in browser ↗"]
     query = "?series=1" + ("" if use_ai else "&est=1")
     return {"name": f"{base_rubric.emoji(res.level)} {res.level}/10", "description": "\n".join(lines),
