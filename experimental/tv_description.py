@@ -12,6 +12,7 @@ import os
 from typing import List, Union
 
 NAME = "tv_description"
+SCORE_MARKS = ("🟩", "🟨", "🟧", "🟪", "🟥", "❔", "⏳", "ISCCI")  # how a score line starts
 # Matched against the request's User-Agent: Samsung TVs ("Mozilla/5.0 (SMART-TV; LINUX; Tizen 9.0)") and the
 # iPhone and iPad app ("Stremio-Apple/0.5.1 (iPhone…)"), which also hides the chip but shows the description.
 TV_AGENTS = ("tizen", "stremio-apple")
@@ -31,7 +32,7 @@ def apply(meta: dict, chips: Union[str, List[str]], user_agent: str) -> dict:
     if not is_on() or not is_tv(user_agent):
         return meta
     chips = [chips] if isinstance(chips, str) else chips
-    line = "Couch Check: " + " | ".join(chips)
+    line = " | ".join(chips)  # starts with the coloured square, e.g. "🟥 8/10 · Sex Scene with Nudity · …"
     description = (meta.get("description") or "").strip()
     # Samsung's app drops line breaks, so " ||" marks where the score ends and the synopsis begins.
     meta = {**meta, "description": f"{line} ||\n\n{description}" if description else line}
@@ -41,7 +42,7 @@ def apply(meta: dict, chips: Union[str, List[str]], user_agent: str) -> dict:
         videos = []
         for v in meta["videos"]:
             summary = (v.get("overview") or v.get("description") or "").strip()
-            if not summary.startswith("Couch Check"):
+            if not summary.startswith(SCORE_MARKS):  # episode scores may already have added the episode's own line
                 summary = f"{line} ||\n\n{summary}" if summary else line
             videos.append({**v, "overview": summary, "description": summary})
         meta["videos"] = videos

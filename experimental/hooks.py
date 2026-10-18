@@ -197,7 +197,7 @@ def _annotate_episodes(show_id: str, meta: dict, rubrics) -> Tuple[dict, bool]:
                 labels.append(f"{base_rubric.emoji(res.level)} {res.level}/10 · {base_rubric.name(res.level)} · {src}")
                 marks.append(f"{base_rubric.emoji(res.level)}{res.level}")
         if labels:
-            line = "Couch Check: " + " | ".join(labels)
+            line = " | ".join(labels)
             v = {**v, "name": f"{v.get('name') or v.get('title') or ''} · {marks[-1]}"}
             for field in ("overview", "description"):
                 if v.get(field) or field == "overview":
