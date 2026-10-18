@@ -248,7 +248,7 @@ def _warning_guard(text: str, c: dict) -> dict:
 def _genre_nonsexual(text: str, c: dict, about: str) -> dict:
     """In a Sci-Fi or Horror title, nudity with no sexual or romantic framing counts as non-sexual (rubric v5.2)."""
     if (_SCIFI_HORROR.search(about) and not c.get("nonsexual") and NAKED_CAP <= c["level"] <= 7
-            and not _SEXUAL_SCENE.search(text)):
+            and not _SEXUAL_SCENE.search(text) and c.get("warning") != "assault" and not _ASSAULT.search(text)):
         return {**c, "level": rubric.NONSEXUAL_CAP, "nonsexual": "scifi_horror",
                 "shown": "nudity with no sexual framing, in a sci-fi or horror title"}
     return c
@@ -434,6 +434,7 @@ _WARNINGS = [
     ("violence_talk", re.compile(r"(discuss\w*|talk\w*|mention\w*|references?).{0,40}(sex(ual)? (abuse|violence))|"
                                  r"(sex(ual)? (abuse|violence)).{0,40}(discuss\w*|talk\w*|mention\w*)", re.I)),
 ]
+_ASSAULT = dict(_WARNINGS)["assault"]  # assault is never non-sexual, whatever the genre
 _OVERVIEW = re.compile(r"^(overall|in general|generally|mostly|throughout|this (film|movie|show|series))", re.I)
 
 

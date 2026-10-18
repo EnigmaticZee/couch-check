@@ -162,6 +162,10 @@ font-size:1.1rem;color:#fff}
 .warnpill{display:inline-flex;align-items:center;border-radius:999px;padding:6px 14px;font-weight:700;font-size:.9rem;
 background:#b8326f;color:#fff}
 .meaning{margin:4px 0 0;font-size:.95rem;opacity:.85}
+.scorepill.sm{font-size:.85rem;padding:3px 12px 3px 3px;gap:7px}.scorepill.sm i{font-size:.85rem;padding:1px 8px}
+.warnpill.sm{font-size:.82rem;padding:4px 12px}
+.group small{background:var(--line);color:var(--muted);border-radius:999px;padding:1px 8px;font-size:.75rem;font-weight:600}
+ul.items.flagged li{display:block;border-top:0;border-left:3px solid var(--bc);padding:6px 0 6px 14px;margin:10px 0 14px}
 .nsbox{background:rgba(47,127,184,.12);color:#2f7fb8;border-radius:10px;padding:8px 10px;font-size:.88rem;margin-top:6px}
 .yours{border-color:var(--accent)}
 @media (prefers-color-scheme:dark){.nsbox{color:#6fb3e6}}
@@ -208,12 +212,9 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
         text = escape(i.text)
         if i.is_spoiler:
             text = f'<details class="spoiler"><summary>Spoiler: tap to show</summary>{text}</details>'
-        if i.unscored:
-            chip = f'<span class="chip lv-warn" title="{escape(rubric.WARNINGS[i.warning])}">⚠️</span>'
-        else:
-            chip = (f'<span class="chip lv-{color(i.level)}" title="{escape(rubric.name(i.level))}">'
-                    f'{i.level}{"*" if i.nonsexual else ""}</span>')
-        return f"<li>{chip}<div>{text}{_nonsexual_box(i)}{tag_html}</div></li>"
+        # The group header already shows the level, so items get only a bar in its colour, not the number again.
+        bar = "#b8326f" if i.unscored else PILL_SHADES[color(i.level)]
+        return f'<li style="--bc:{bar}"><div>{text}{_nonsexual_box(i)}{tag_html}</div></li>'
 
     warned = [i for i in items if i.unscored]
     scored = [i for i in items if not i.unscored]
@@ -237,14 +238,13 @@ def breakdown(imdb_id: str, entry: dict, result: rubric.Result, items: List[rubr
     elif items:
         groups = []
         if warned:
-            groups.append(f'<div class="group"><span class="chip lv-warn" style="width:22px;height:22px;border-radius:6px;'
-                          f'font-size:.7rem">⚠️</span>Warning <small>· {len(warned)}</small></div>'
-                          f'<ul class="items">{"".join(item_html(i) for i in warned)}</ul>')
+            groups.append(f'<div class="group"><span class="warnpill sm">⚠️ Warning</span><small>{len(warned)}</small></div>'
+                          f'<ul class="items flagged">{"".join(item_html(i) for i in warned)}</ul>')
         for level in sorted({i.level for i in scored}, reverse=True):
             in_level = sorted((i for i in scored if i.level == level), key=lambda i: not i.is_scene)
-            groups.append(f'<div class="group"><span class="chip lv-{color(level)}" style="width:22px;height:22px;'
-                          f'border-radius:6px;font-size:.75rem">{level}</span>{escape(rubric.name(level))}'
-                          f' <small>· {len(in_level)}</small></div><ul class="items">{"".join(item_html(i) for i in in_level)}</ul>')
+            groups.append(f'<div class="group"><span class="scorepill sm sp-{color(level)}"><i>{level}</i>'
+                          f'{escape(rubric.name(level))}</span><small>{len(in_level)}</small></div>'
+                          f'<ul class="items flagged">{"".join(item_html(i) for i in in_level)}</ul>')
         items_html = f'<div class="card"><h3>Flagged content · {len(items)}</h3>{"".join(groups)}</div>'
     else:
         items_html = ""
