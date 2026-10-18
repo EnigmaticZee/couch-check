@@ -141,6 +141,9 @@ IMDb has no public API for parents guides. Couch Check uses the same endpoint IM
 
 Scene descriptions in the breakdowns are written by IMDb's contributors; Couch Check only adds the levels and summaries. IMDb's terms allow only limited personal, non-commercial use of its data, so keep your copy personal, or set `PG_SCENE_TEXT=off` so breakdowns link to IMDb for the descriptions instead of showing them.
 
+> [!NOTE]
+> Couch Check is an independent, non-commercial project, not affiliated with IMDb or Stremio. Anyone who runs a copy is responsible for following the terms of the services it uses (IMDb, the AI provider, Stremio). Keep your copy for personal use; if you share it, set `PG_SCENE_TEXT=off`.
+
 ## 🗺️ Roadmap
 
 **Shipped**
