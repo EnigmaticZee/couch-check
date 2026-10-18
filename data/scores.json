@@ -105,9 +105,50 @@
    "pg1797369": [3, 1, 0, null, null, "stripper dance, no nudity shown"],
    "pg1817246": [3, 1, 0, "assault", null, "jokes about rape"]
   }},
+  "tt16358384": {"title": "Tulsa King", "scored": "2026-10-18", "summary": "The series includes a scene where a one‑night stand shows kissing, clothes being removed and audible thrusting, but no nudity is shown. Another moment features a man entering a room with a female stripper in lingerie. Additionally, there is a reference to an implied sexual assault involving a character’s daughter, discussed but not depicted. Overall, sexual content is limited to brief implied undressing, lingerie, and off‑screen assault talk.", "items": {
+   "pg1259881": [3, 0, 0, "assault", null, "dialogue about rape, no visual"],
+   "pg1623355": [5, 1, 0, null, null, "nudity, without saying what is visible"],
+   "pg1806886": [3, 1, 0, null, null, "female stripper in lingerie"]
+  }},
+  "tt16478058": {"title": "Best of the Best", "scored": "2026-10-18", "summary": "The most explicit content is brief kissing and some flirting, with occasional sexual talk about topics like birth‑control and STIs. These moments are short and scattered. The remainder consists mainly of dialogue referencing sexual subjects without visual nudity.", "items": {
+   "pg2154320": [2, 1, 0, null, null, "kissing"],
+   "pg2155547": [2, 1, 0, null, null, "kissing, flirting, sexual talk"]
+  }},
+  "tt1756855": {"title": "Coyote vs. Acme", "scored": "2026-10-18", "summary": "The film includes a brief comedic gag with no sexual content, a spoken request for a character to undress that remains only dialogue, and extensive cartoon animal nudity that is non‑sexual and runs throughout most of the movie. Most of the content is non‑sexual, with only brief talk about nudity.", "items": {
+   "pg2125301": [0, 1, 0, null, null, "only talk, spray gag"],
+   "pg2145388": [1, 1, 0, null, null, "dialogue requesting undressing, no actual nudity"],
+   "pg2182158": [5, 1, 1, null, null, "Cartoon animal characters shown without clothing, no sexual context"]
+  }},
   "tt1821681": {"title": "Touch", "scored": "2026-10-18", "summary": "The series contains only mild sexual references spoken in dialogue, with no visual nudity. These references are occasional and brief, and the rest of the content has no sexual or nudity elements.", "items": {
    "pg0264182": [1, 0, 0, null, null, "only talk"],
    "pg0264183": [0, 0, 0, null, null, "nothing"]
+  }},
+  "tt1839578": {"title": "Person of Interest", "scored": "2026-10-18", "summary": "The series includes a few sex scenes, one described as graphic, but no explicit nudity is shown. There is a brief moment with a shirtless man in bed, and a later scene of intense female kissing with skin visible, but no breasts or genitals are shown. Most of the content is limited to sexual talk and implied scenes rather than explicit nudity.", "items": {
+   "pg1781762": [1, 0, 0, null, null, "only talk"],
+   "pg1970892": [6, 1, 0, null, null, "a general comment calling it graphic, nothing specific described"],
+   "pg2009427": [0, 1, 0, null, null, "shirtless man in bed with woman"],
+   "pg2070947": [3, 1, 0, null, null, "intense kissing, skin shown"]
+  }},
+  "tt1844624": {"title": "American Horror Story", "scored": "2026-10-18", "summary": "The series includes graphic sexual assault scenes and very graphic sex with full nudity in several episodes, often repeated. There are also multiple brief moments showing female buttocks and occasional breast nudity, plus scenes of sex without nudity. Much of the rest is limited to talk about sex, toy displays, or non‑sexual situations like an arrest.", "items": {
+   "pg1049338": [3, 1, 1, null, null, "sex toys displayed, gimp suit worn"],
+   "pg1049346": [6, 1, 0, null, null, "sex on iron bed, no nudity"],
+   "pg1049367": [1, 1, 0, null, null, "man describes plan to have sex with twins"],
+   "pg1209178": [6, 1, 1, "assault", null, "a general comment calling it graphic, nothing specific described"],
+   "pg1209451": [5, 1, 0, null, "scifi_horror", "nudity with no sexual framing, in a sci-fi or horror title"],
+   "pg1210879": [0, 1, 1, null, null, "no nudity in bathhouse scenes"],
+   "pg1329780": [7, 1, 0, null, null, "breast nudity during foursome"],
+   "pg1712073": [8, 1, 1, null, null, "graphic sex scenes with nudity and lots of kissing"],
+   "pg0265896": [5, 1, 0, null, "scifi_horror", "nudity with no sexual framing, in a sci-fi or horror title"],
+   "pg0265897": [0, 0, 0, null, null, "general overview, no specific content"],
+   "pg0265955": [5, 1, 0, null, "scifi_horror", "nudity with no sexual framing, in a sci-fi or horror title"],
+   "pg0265956": [5, 1, 0, null, "scifi_horror", "nudity with no sexual framing, in a sci-fi or horror title"]
+  }},
+  "tt19231492": {"title": "Dark Matter", "scored": "2026-10-18", "summary": "The series includes occasional brief male buttocks nudity and some scenes with a woman's cleavage shown in a bra. There are also a few suggestive almost‑sex moments and clothed kissing, but most scenes are non‑graphic and involve only clothing or talk.", "items": {
+   "pg1482034": [4, 1, 0, null, null, "clothes removal and kiss, no nudity"],
+   "pg1501453": [3, 1, 0, null, null, "suggestive almost\u2011sex scenes, no graphic nudity"],
+   "pg1657611": [3, 1, 1, null, null, "woman in bra, cleavage exposed"],
+   "pg2058981": [2, 1, 0, null, null, "fully clothed kiss, no nudity"],
+   "pg2150880": [5, 1, 0, null, "scifi_horror", "nudity with no sexual framing, in a sci-fi or horror title"]
   }},
   "tt22084616": {"title": "Spider-Man: Brand New Day", "scored": "2026-10-18", "summary": "The film includes a brief kiss and a short scene where a man is shown in boxer shorts after being told to disrobe. There is also a line referencing sexual artwork online. Apart from these moments, the content is limited to dialogue and action.", "items": {
    "pg2183788": [2, 1, 0, null, null, "brief kiss"],
@@ -129,6 +170,20 @@
    "pg1964082": [1, 1, 0, null, null, "sensual talk between spouses"],
    "pg1964085": [3, 1, 0, null, null, "sexual suggestion dialogue"],
    "pg1964091": [0, 1, 0, null, null, "man chokes woman, no nudity"]
+  }},
+  "tt35934755": {"title": "Below", "scored": "2026-10-18", "summary": "The series includes a covered sex scene with an entity, but no visible nudity. It also shows brief images of female cleavage in sexting and a clothed foreplay moment where a male fondles a female’s breasts. Most other content is limited to suggestive clothing exposure without explicit nudity.", "items": {
+   "pg2180579": [3, 1, 0, null, null, "male rear in boxers"],
+   "pg2182134": [6, 1, 0, null, null, "sex scene with entity, explicit sexual gestures and motions"],
+   "pg2182476": [3, 0, 0, null, null, "cleavage photos via sexting"],
+   "pg2182478": [2, 1, 0, null, null, "clothed foreplay, breast fondling"]
+  }},
+  "tt37281055": {"title": "Buddy", "scored": "2026-10-18", "summary": "The film includes a brief scene where a woman's butt is touched and a short oral encounter with a woman, both sexual but without nudity. There are several lines of dialogue about sexual topics, including references to minors and questions about genitals. Most of the content is limited to brief sexual actions or talk rather than explicit nudity.", "items": {
+   "pg2102679": [3, 1, 0, null, null, "hand on woman's butt"],
+   "pg2142231": [1, 1, 0, null, null, "talk about pedophilia"],
+   "pg2145563": [5, 1, 0, null, "scifi_horror", "nudity with no sexual framing, in a sci-fi or horror title"],
+   "pg2149455": [3, 1, 0, null, null, "old man kissing marionette with tongue"],
+   "pg2163681": [1, 1, 0, null, null, "boy says he doesn't want his penis seen while peeing"],
+   "pg2163692": [1, 1, 0, null, null, "character asks what a penis is"]
   }}
  }
 }
