@@ -148,14 +148,20 @@ Scene descriptions in the breakdowns are written by IMDb's contributors; Couch C
 ✅ In-app breakdown with a short summary and every flagged scene<br>
 ✅ Score row in every episode's and movie's stream list<br>
 ✅ Live AI scores, with a keyword estimate as the fallback<br>
-✅ Saved scores that survive redeploys
+✅ Saved scores that survive redeploys<br>
+✅ Content warnings shown next to the score<br>
+✅ Your own score for a title after watching it<br>
+✅ Samsung TV support, with the score in the description<br>
+✅ A backup AI key, so scores keep coming when one runs out
 
 **Up next**
 
-⬜ Episode-level scores for shows<br>
-⬜ Scene timing, so you can skip ahead<br>
-⬜ Personal cut-offs, like one limit for family and another for just the two of you<br>
-⬜ Your own override for a title after watching it
+⬜ Episode-level scores for shows (being tested)
+
+**Someday, maybe**
+
+🌙 Scene timing, so you can skip ahead <sub>— IMDb rarely says when a scene happens</sub><br>
+🌙 Personal cut-offs, like one limit for family and another for just the two of you <sub>— Stremio can't tell who's watching</sub>
 
 ## License
 
