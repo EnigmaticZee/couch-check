@@ -86,14 +86,15 @@ def _doc(title: str, body: str, refresh: bool = False, extra_css: str = "") -> s
 {body}</main></body></html>"""
 
 
-def _ladder_table() -> str:
+def _ladder_table(rules: bool = True) -> str:
+    """The levels, and (unless rules=False) how edge cases are scored."""
     rows = "".join(
         f'<tr><td><span class="chip lv-{color(l)}">{l}</span></td><td><b>{escape(n)}</b><br>{escape(d)}</td></tr>'
         for l, n, d in rubric.LADDER
     )
-    rules = "".join(f"<li>{escape(r)}</li>" for r in rubric.RULES)
-    return (f'<details class="ladder"><summary>What the levels mean</summary><table>{rows}</table>'
-            f'<p style="margin:16px 0 4px"><b>How edge cases are scored</b></p><ul class="rules">{rules}</ul></details>')
+    items = "".join(f"<li>{escape(r)}</li>" for r in rubric.RULES)
+    edge = f'<p style="margin:16px 0 4px"><b>How edge cases are scored</b></p><ul class="rules">{items}</ul>' if rules else ""
+    return f'<details class="ladder"><summary>What the levels mean</summary><table>{rows}</table>{edge}</details>'
 
 
 def _scale(level: Optional[int]) -> str:
@@ -591,7 +592,7 @@ or Apple? That has no password here, so use the steps below.</p>
 <li>Open a community addon manager (search "Stremio Addon Manager").</li>
 <li>Drag <b>Couch Check</b> above <b>Cinemeta</b> and sync.</li>
 <li>Restart Stremio. The stream-list row works without this step.</li></ol></details></details></div>
-<div class="card"><h3>The scale</h3><div class="levels">{levels}</div>{_ladder_table()}</div>
+<div class="card"><h3>The scale</h3><div class="levels">{levels}</div>{_ladder_table(rules=not user_keys)}</div>
 <div class="card"><h3>Where scores come from</h3><p style="margin:0">Every title has a list of scene descriptions.
 An AI model reads each one in context, places it on the 0–10 scale against a written rubric, and re-checks the scene that
 sets the title's score; those scores are marked <b>AI</b>. Until a title has been read, it shows a quicker,
