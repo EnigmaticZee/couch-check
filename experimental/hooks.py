@@ -12,7 +12,7 @@ from typing import Callable, List, Optional, Tuple
 from pg import cinemeta
 from pg.store import SERIES_TYPES
 
-from . import ISCCI_MODE, enabled, episode_scores, iscci, tv_description
+from . import ISCCI_MODE, enabled, episode_scores, ios_fact_line, iscci, tv_description
 from .iscci import present
 from .iscci import service as iscci_service
 
@@ -167,8 +167,9 @@ def meta(imdb_id: str, kind: str, base: str, use_ai: bool, user_agent: str,
         if pending:
             max_age = min(max_age, PENDING_CACHE)
     headers = None
-    if tv_description.is_on():  # the answer differs by device, so caches must keep them apart
+    if tv_description.is_on() or ios_fact_line.is_on():  # the answer differs by device, so caches keep them apart
         result = tv_description.apply(result, chips, user_agent)
+        result = ios_fact_line.apply(result, chips, user_agent)
         headers = {"Vary": "User-Agent"}
     return result, max_age, headers
 
