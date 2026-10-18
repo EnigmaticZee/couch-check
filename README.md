@@ -21,6 +21,7 @@ Couch Check reads each title's IMDb parents guide and turns its intimate-content
 - **On the title's main screen.** A *Couch Check* chip sits right under the rating, before you even pick an episode.
 - **A breakdown inside Stremio.** Tap the chip for a short summary and every flagged scene, grouped by level, with spoilers hidden.
 - **In every stream list.** A row at the top of each episode's and movie's sources.
+- **On Samsung TVs and iPhone.** Those apps hide the chip, so the score opens the title's description instead, and on iPhone it also sits next to the runtime.
 - **AI score or quick estimate.** Every score is labelled. `AI` means an AI model read each scene description and understood its context (a joke about something isn't the same as seeing it). `Est.` is a rougher keyword estimate, shown until the AI has scored a title, or always if you turn AI off.
 
 ## The scale
