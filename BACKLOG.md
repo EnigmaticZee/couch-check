@@ -4,7 +4,7 @@ Couch Check rates intimate content 0–10 per title. Done so far: the main-scree
 
 ## Now
 
-1. **Public instance.** Host one copy for everyone once BeamUp (or another free host) can run it, with `PG_SCENE_TEXT=off`.
+1. **Public instance.** Host one copy for everyone once BeamUp (or another free host) can run it, keeping `PG_SCENE_TEXT` at its default (off).
 2. **Pre-score popular titles:** score a list of popular movies and shows, so most titles say `AI` from day one and the free AI quota goes further.
 
 ## Next

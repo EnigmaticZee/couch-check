@@ -85,7 +85,7 @@ Render's free disk is wiped on each deploy or restart, so titles are re-fetched 
 1. Open your address's `/configure` page and click **Install in Stremio**. Turn off **Use AI scores** there first if you only want estimates.
 2. For the chip on the main screen, Couch Check has to sit **above Cinemeta** in your addon list. The Stremio app can't reorder addons, so use a community addon manager (search "Stremio Addon Manager"), drag Couch Check above Cinemeta, sync, and restart Stremio. The stream-list row works without this step.
 
-If you share your copy with other people, set `PG_SCENE_TEXT=off` (see [About the data](#about-the-data)).
+Breakdowns link to IMDb for the scene descriptions by default. For a copy only you use, set `PG_SCENE_TEXT=on` to show them in the breakdowns instead (see [About the data](#about-the-data)).
 
 ## Settings
 
@@ -100,7 +100,7 @@ Set these in `.env` locally, or as environment variables on your host.
 | `PG_AI_DAILY_LIMIT` | `500` | Max AI calls per day; beyond that, new titles get estimates |
 | `PG_AI_REASONING_EFFORT` | `low` for gpt-oss | Reasoning effort for reasoning models |
 | `PG_CLASSIFIER` | — | `keywords` turns AI scoring off for everyone |
-| `PG_SCENE_TEXT` | `on` | `off` shows scene counts per level with a link to IMDb instead of IMDb's scene descriptions |
+| `PG_SCENE_TEXT` | `off` | `off` shows scene counts per level with a link to IMDb; `on` shows IMDb's scene descriptions in the breakdowns (personal copies only) |
 | `PORT` | `7001` | 7000 is taken by macOS AirPlay Receiver |
 | `PG_PUBLIC_URL` | from request | Public base URL, if your host's address isn't detected automatically |
 | `PG_DB` | `./cache.sqlite3` | Cache location |
@@ -139,10 +139,10 @@ Disagree with a title's score after watching it? Add it to [`data/overrides.json
 
 IMDb has no public API for parents guides. Couch Check uses the same endpoint IMDb's website uses, fetches only titles someone opens, and waits at least a second between requests. Finished titles (shows that have ended, movies more than a year old) are cached permanently; ongoing shows and recent movies are refreshed every three weeks. To force a refresh, run `python3 tools/refresh.py <imdb ids…>` where the server runs.
 
-Scene descriptions in the breakdowns are written by IMDb's contributors; Couch Check only adds the levels and summaries. IMDb's terms allow only limited personal, non-commercial use of its data, so keep your copy personal, or set `PG_SCENE_TEXT=off` so breakdowns link to IMDb for the descriptions instead of showing them.
+Scene descriptions in the breakdowns are written by IMDb's contributors; Couch Check only adds the levels and summaries. IMDb's terms allow only limited personal, non-commercial use of its data, so by default breakdowns link to IMDb for the descriptions instead of showing them. On a copy only you use, you can set `PG_SCENE_TEXT=on` to show them.
 
 > [!NOTE]
-> Couch Check is an independent, non-commercial project, not affiliated with IMDb or Stremio. Anyone who runs a copy is responsible for following the terms of the services it uses (IMDb, the AI provider, Stremio). Keep your copy for personal use; if you share it, set `PG_SCENE_TEXT=off`.
+> Couch Check is an independent, non-commercial project, not affiliated with IMDb or Stremio. Anyone who runs a copy is responsible for following the terms of the services it uses (IMDb, the AI provider, Stremio). Keep your copy for personal use, and only set `PG_SCENE_TEXT=on` if nobody else uses it.
 
 ## 🗺️ Roadmap
 

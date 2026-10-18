@@ -34,9 +34,9 @@ from experimental import hooks as experiments  # off unless switched on in the e
 
 PORT = int(os.environ.get("PORT", "7001"))
 PUBLIC_URL = os.environ.get("PG_PUBLIC_URL", "").rstrip("/")
-# "off" shows scene counts per level with a link to IMDb instead of IMDb's scene descriptions
-# (recommended for public instances; the descriptions are IMDb contributors' text).
-SCENE_TEXT = os.environ.get("PG_SCENE_TEXT", "on").lower() != "off"
+# Off by default: breakdowns show scene counts per level with a link to IMDb, since the descriptions are IMDb
+# contributors' text. "on" shows the descriptions, which is fine for a copy only you use.
+SCENE_TEXT = os.environ.get("PG_SCENE_TEXT", "off").lower() == "on"
 # Secret that lets tools/save_scores.py download this server's AI scores (GET /export/scores.json
 # with "Authorization: Bearer <token>"). The endpoint doesn't exist while this is unset.
 EXPORT_TOKEN = os.environ.get("PG_EXPORT_TOKEN", "")
