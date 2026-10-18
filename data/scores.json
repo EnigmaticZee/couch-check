@@ -67,6 +67,22 @@
    "pg0140161": [1, 1, 0],
    "pg0140162": [4, 0, 0]
   }},
+  "tt1561755": {"title": "Bob's Burgers", "scored": "2026-10-18", "summary": "The series contains occasional brief male butt nudity, such as mooning and a scene where a character shows his bare butt, and a few implied sex sounds off‑screen. Most of the sexual content is limited to jokes, innuendo and references, with occasional suggestive dance or artwork, and there is no explicit female nudity or graphic sex. Overall, the show’s sexual material is mostly comedic talk and brief, non‑graphic visuals.", "items": {
+   "pg1146142": [1, 0, 0, null, null, "only talk about swingers"],
+   "pg1323172": [5, 1, 0, null, null, "male characters moon, bare buttocks visible"],
+   "pg1358408": [0, 1, 0, null, null, "no explicit body parts shown"],
+   "pg1456477": [5, 1, 0, null, null, "brief glimpses of male buttocks"],
+   "pg1456741": [5, 1, 0, null, null, "Gene shows bare butt to cops"],
+   "pg1522293": [3, 0, 1, null, null, "many jokes about sex topics"],
+   "pg1555871": [4, 1, 0, null, null, "sex sounds heard off\u2011screen"],
+   "pg1555872": [1, 0, 0, null, null, "mention of a sex tape"],
+   "pg1556437": [3, 1, 0, null, null, "zoomed\u2011in paintings of animal anuses"],
+   "pg1622693": [3, 1, 0, null, null, "young girl rubbing crotch below screen"],
+   "pg1674272": [3, 0, 0, null, null, "bellies, bare feet, hanging butts"],
+   "pg1722269": [1, 0, 0, null, null, "some sexual references"],
+   "pg1797369": [3, 1, 0, null, null, "stripper dance, no nudity shown"],
+   "pg1817246": [3, 1, 0, "assault", null, "jokes about rape"]
+  }},
   "tt1821681": {"title": "Touch", "scored": "2026-10-18", "summary": "The series contains only mild sexual references spoken in dialogue, with no visual nudity. These references are occasional and brief, and the rest of the content has no sexual or nudity elements.", "items": {
    "pg0264182": [1, 0, 0, null, null, "only talk"],
    "pg0264183": [0, 0, 0, null, null, "nothing"]
@@ -75,6 +91,13 @@
    "pg2183788": [2, 1, 0, null, null, "brief kiss"],
    "pg2183793": [5, 1, 0, null, null, "young man briefly shown in boxer shorts after disrobing"],
    "pg2183800": [3, 0, 0, null, null, "only talk"]
+  }},
+  "tt26545992": {"title": "Lanterns", "scored": "2026-10-18", "summary": "The series includes a brief full‑frontal view of a male corpse’s genitals and a longer scene showing a man’s bare rear. There are also clothed sex scenes in a truck and a car, and a very quick glimpse of a corpse’s nudity. Most of the sexual content is non‑graphic, with only the corpse scenes showing explicit nudity.", "items": {
+   "pg2117643": [6, 1, 0, null, null, "clothed sex in a truck"],
+   "pg2124869": [5, 1, 0, null, "corpse", "brief corpse nudity"],
+   "pg2125100": [6, 1, 0, null, null, "sex in car, no nudity"],
+   "pg2142380": [5, 1, 1, null, null, "male rear nudity, long scene"],
+   "pg2187928": [5, 1, 0, null, "corpse", "full frontal male nudity, corpse"]
   }},
   "tt3148266": {"title": "12 Monkeys", "scored": "2026-10-18", "summary": "The series includes brief partial nudity of a man's buttocks and a short glimpse of a woman in underwear, as well as scenes with women in short dresses. Most other moments are limited to kisses, implied undressing that is cut away, and sexual talk or innuendo. A single scene shows a violent choking incident with no nudity.", "items": {
    "pg1509724": [3, 1, 0, null, null, "women in short dresses"],
