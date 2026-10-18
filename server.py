@@ -416,7 +416,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Headers", "*")
-        self.send_header("Cache-Control", f"max-age={min(cache, HTTP_CACHE_MAX)}" if cache else "no-cache")
+        # "private": the Stremio apps may keep an answer, but shared caches in front of a host (e.g. Cloudflare on
+        # BeamUp) mustn't: they ignore Vary: User-Agent, so a TV could get a desktop answer, and scores would go stale.
+        self.send_header("Cache-Control", f"private, max-age={min(cache, HTTP_CACHE_MAX)}" if cache else "no-cache")
         for name, value in (headers or {}).items():
             self.send_header(name, value)
         self.end_headers()
